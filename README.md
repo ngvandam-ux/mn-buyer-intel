@@ -180,6 +180,25 @@ pnpm typecheck
 - Multi-state expansion — add connectors with a new `jurisdiction`; schema unchanged.
 - Hardening: per-source rate limits, conditional GET / ETag caching, robots compliance.
 
+## Known limitations & tracked follow-ups
+
+Surfaced by the in-repo adversarial review and consciously deferred (none affect the core
+correctness verified by the test suite):
+
+- **Ingest is not transactional per document** — a mid-run failure can leave partially
+  committed rows alongside an `error` refresh job. Wrap each document's processing in a
+  `db.transaction` for atomic rollback.
+- **`evidence_spans.field` stores the extraction kind**, not the specific justified field
+  name. Locators still pinpoint the snippet; per-field granularity is a future refinement.
+- **Entity-match reasons** use the single best opportunity's reasons rather than an
+  aggregated/deduped set across the buyer's qualifying opportunities.
+- **No pagination** — list endpoints use hard caps (500–1000), not cursors.
+- **No auth / rate limiting** — this is an internal tool. For any networked deployment,
+  bind to localhost or put a shared secret + rate limiter in front of the write routes.
+- Minor: derived signals are written without their own evidence span (their opportunity
+  carries the evidence); the OSP/MinnState contact name for purely email-only listings is
+  derived from the email local part (the email is the evidence).
+
 ## Legal / data ethics
 
 Only publicly available information is captured, and every stored field is traceable to
