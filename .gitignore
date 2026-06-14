@@ -1,0 +1,30 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.DS_Store
+
+# local data — PGlite file-backed dev DB
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# env
+.env
+.env.local
+.env.*.local
+
+# playwright
+/test-results/
+/playwright-report/
+/.playwright/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# vite
+apps/web/dist/
+.vite/
