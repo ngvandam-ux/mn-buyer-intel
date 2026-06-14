@@ -88,7 +88,7 @@ CREATE TABLE "opportunities" (
 	"url" text,
 	"line_items" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"category_keys" text[] DEFAULT ARRAY[]::text[] NOT NULL,
-	"embedding" vector(1536),
+	"embedding" jsonb,
 	"source_document_id" uuid,
 	"confidence" real DEFAULT 1 NOT NULL,
 	"extracted_at" timestamp with time zone DEFAULT now() NOT NULL,

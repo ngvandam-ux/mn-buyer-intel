@@ -19,7 +19,9 @@ export function registerBasicAuth(app: FastifyInstance): void {
   const expected = digest(`Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`);
 
   app.addHook('onRequest', async (req, reply) => {
-    if (req.url === '/api/health') return;
+    // Gate the API only; the static SPA + health check load openly (the SPA then sends
+    // credentials with each /api call).
+    if (!req.url.startsWith('/api/') || req.url === '/api/health') return;
     const provided = digest(req.headers.authorization ?? '');
     if (!timingSafeEqual(provided, expected)) {
       reply

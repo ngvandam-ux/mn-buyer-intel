@@ -10,7 +10,6 @@
 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sql } from 'drizzle-orm';
 import { migrate as migrateNode } from 'drizzle-orm/node-postgres/migrator';
 import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -22,7 +21,6 @@ const MIGRATIONS_FOLDER = resolve(HERE, '../drizzle');
 export async function runMigrations(): Promise<void> {
   const handle = await createDb();
   try {
-    await handle.db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
     if (handle.kind === 'pglite') {
       await migratePglite(handle.db, { migrationsFolder: MIGRATIONS_FOLDER });
     } else {

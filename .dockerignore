@@ -7,5 +7,4 @@ playwright-report
 .playwright
 *.log
 apps/web/dist
-# fixtures aren't needed by the API at runtime (seeding runs separately)
-fixtures
+.deploy-credentials.txt

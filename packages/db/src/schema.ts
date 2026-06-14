@@ -33,7 +33,6 @@ import {
   text,
   timestamp,
   uuid,
-  vector,
 } from 'drizzle-orm/pg-core';
 
 const createdAt = () => timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull();
@@ -203,8 +202,10 @@ export const opportunities = pgTable(
     url: text('url'),
     lineItems: jsonb('line_items').$type<OpportunityLineItem[]>().notNull().default(sql`'[]'::jsonb`),
     categoryKeys: text('category_keys').array().notNull().default(sql`ARRAY[]::text[]`),
-    // Reserved for the future semantic layer. Nullable + unused by the v1 matcher.
-    embedding: vector('embedding', { dimensions: 1536 }),
+    // Reserved for the future semantic layer (stored as JSON for now so the schema runs on
+    // any Postgres). Swap to a pgvector `vector(1536)` column when semantic search is
+    // enabled — verified working on PGlite in dev. Nullable + unused by the v1 matcher.
+    embedding: jsonb('embedding').$type<number[]>(),
     sourceDocumentId: uuid('source_document_id').references(() => sourceDocuments.id, {
       onDelete: 'set null',
     }),
