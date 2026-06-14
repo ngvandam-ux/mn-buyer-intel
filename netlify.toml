@@ -1,0 +1,17 @@
+# Netlify config for the web app (static Vite build out of the monorepo).
+[build]
+  command = "pnpm install --frozen-lockfile && pnpm --filter @mn/web build"
+  publish = "apps/web/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Auth gate on in prod (matches the API's Basic Auth).
+  VITE_REQUIRE_AUTH = "true"
+  # Point the SPA at the Fly API. Update if you rename the Fly app.
+  VITE_API_URL = "https://mn-buyer-intel-api.fly.dev"
+
+# SPA client-side routing fallback.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { AuthGate } from './components/AuthGate.tsx';
 import { Layout } from './components/Layout.tsx';
 import './styles.css';
 import { Contacts } from './views/Contacts.tsx';
@@ -21,8 +22,9 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <Routes>
+      <AuthGate>
+        <Router>
+          <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/buyers" element={<Entities />} />
@@ -35,8 +37,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/sources" element={<SourceHealth />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
-        </Routes>
-      </Router>
+          </Routes>
+        </Router>
+      </AuthGate>
     </QueryClientProvider>
   </React.StrictMode>,
 );

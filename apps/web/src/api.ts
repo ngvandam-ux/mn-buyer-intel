@@ -16,19 +16,33 @@ import type {
   SourceHealth,
 } from '@mn/core';
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path, { headers: { accept: 'application/json' } });
+import { UNAUTHORIZED_EVENT, authHeader, clearCreds } from './auth.ts';
+
+// Prod build points at the Fly API via VITE_API_URL; dev uses '' + the Vite proxy.
+const BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+
+function handleStatus(res: Response, path: string): void {
+  if (res.status === 401) {
+    clearCreds();
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    throw new Error('Unauthorized — please sign in again.');
+  }
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`);
+}
+
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(BASE + path, { headers: { accept: 'application/json', ...authHeader() } });
+  handleStatus(res, path);
   return res.json() as Promise<T>;
 }
 
 async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(BASE + path, {
     method,
-    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    headers: { 'content-type': 'application/json', accept: 'application/json', ...authHeader() },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`);
+  handleStatus(res, path);
   return res.json() as Promise<T>;
 }
 
