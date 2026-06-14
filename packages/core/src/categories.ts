@@ -356,3 +356,48 @@ export function getCategory(key: string): CategoryDef | undefined {
 export function categoryLabel(key: string): string {
   return CATEGORY_BY_KEY.get(key)?.label ?? key;
 }
+
+/**
+ * Detect which categories a piece of text belongs to, by keyword hit. Returns category
+ * keys ordered by number of distinct keyword matches (strongest first). Used to auto-tag
+ * opportunities during ingestion and to match seller categories.
+ *
+ * Imported lazily inside the function to avoid a load-order cycle with `text.ts`.
+ */
+export function detectCategories(text: string | null | undefined): string[] {
+  if (!text) return [];
+  // local import to keep this module dependency-light at the top level
+  const hits: Array<{ key: string; n: number }> = [];
+  for (const cat of CATEGORY_TAXONOMY) {
+    const matched = phraseHitsCount(text, cat.keywords);
+    if (matched > 0) hits.push({ key: cat.key, n: matched });
+  }
+  return hits.sort((a, b) => b.n - a.n).map((h) => h.key);
+}
+
+// Minimal inline phrase matcher (kept here to avoid an import cycle). Mirrors text.ts
+// semantics: single-word needle → whole-token match; multi-word needle → substring.
+function phraseHitsCount(haystack: string, needles: string[]): number {
+  const normHay = haystack
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normHay) return 0;
+  const tokens = new Set(normHay.split(' '));
+  let n = 0;
+  for (const raw of needles) {
+    const needle = raw
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!needle) continue;
+    if (needle.includes(' ')) {
+      if (normHay.includes(needle)) n += 1;
+    } else if (tokens.has(needle)) {
+      n += 1;
+    }
+  }
+  return n;
+}
