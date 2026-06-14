@@ -7,3 +7,4 @@ export * from './evidence.js';
 export * from './connector.js';
 export * from './domain.js';
 export * from './scoring-config.js';
+export * from './api.js';
