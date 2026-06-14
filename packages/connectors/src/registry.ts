@@ -16,6 +16,18 @@ import { sourcewellConnector } from './sources/sourcewell.js';
 import { supplierPortalConnector } from './sources/supplier-portal.js';
 import { umnConnector } from './sources/umn.js';
 
+export { minnstateConnector } from './sources/minnstate.js';
+export { ospContactsConnector } from './sources/osp-contacts.js';
+export { ospSolicitationsConnector } from './sources/osp-solicitations.js';
+export {
+  metroCouncilConnector,
+  mndotConnector,
+  nationalGuardConnector,
+} from './sources/scaffolds.js';
+export { sourcewellConnector } from './sources/sourcewell.js';
+export { supplierPortalConnector } from './sources/supplier-portal.js';
+export { umnConnector } from './sources/umn.js';
+
 export const CONNECTORS: SourceConnector[] = [
   supplierPortalConnector,
   sourcewellConnector,
