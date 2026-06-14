@@ -28,3 +28,6 @@ pnpm-debug.log*
 # vite
 apps/web/dist/
 .vite/
+
+# local deploy credentials (generated) — NEVER commit
+.deploy-credentials.txt

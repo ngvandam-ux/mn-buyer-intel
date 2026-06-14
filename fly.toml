@@ -6,6 +6,11 @@ primary_region = "ord"  # Chicago — closest to Minnesota
 [build]
   dockerfile = "Dockerfile"
 
+# Runs once per deploy (with secrets + image) before machines update. Idempotent:
+# applies migrations and seeds the DB from committed fixtures + sample sellers.
+[deploy]
+  release_command = "pnpm --filter @mn/scripts run seed"
+
 [http_service]
   internal_port = 8787
   force_https = true

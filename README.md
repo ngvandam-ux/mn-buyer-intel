@@ -10,6 +10,9 @@ Then it matches a seller's products and services to the likely buyers and shows 
 > Built Minnesota-first. The schema and connector layer are jurisdiction-agnostic — other
 > states are added by writing connectors, not by redesigning the schema.
 
+**Live:** https://mn-buyer-intel-api.fly.dev (behind a Basic Auth gate). Single-origin on
+Fly.io — the API serves the SPA, backed by Fly Postgres. See [`DEPLOY.md`](./DEPLOY.md).
+
 ---
 
 ## Quick start
