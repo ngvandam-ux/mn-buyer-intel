@@ -6,6 +6,7 @@ import {
   normalizeText,
   overlapCount,
   phraseHits,
+  singularize,
   snippet,
   tokenize,
   tokenizeAll,
@@ -33,8 +34,21 @@ describe('tokenize', () => {
     const t = tokenize('The fiber and the fiber for a network');
     expect([...t].sort()).toEqual(['fiber', 'network']);
   });
-  it('drops procurement noise words (rfp/bid/solicitation)', () => {
-    expect([...tokenize('RFP for body cameras')].sort()).toEqual(['body', 'cameras']);
+  it('drops procurement noise words (rfp/bid/solicitation) and singularizes', () => {
+    expect([...tokenize('RFP for body cameras')].sort()).toEqual(['body', 'camera']);
+  });
+});
+
+describe('singularize', () => {
+  it('handles common plural forms', () => {
+    expect(singularize('platforms')).toBe('platform');
+    expect(singularize('cameras')).toBe('camera');
+    expect(singularize('facilities')).toBe('facility');
+    expect(singularize('buses')).toBe('bus');
+  });
+  it('leaves short and -ss words alone', () => {
+    expect(singularize('gas')).toBe('gas');
+    expect(singularize('access')).toBe('access');
   });
 });
 
@@ -46,8 +60,10 @@ describe('tokenizeAll', () => {
 });
 
 describe('phraseHits', () => {
-  it('matches single-word needles as whole tokens', () => {
-    expect(phraseHits('We need fiber cabling', ['fiber', 'fibers'])).toEqual(['fiber']);
+  it('matches single-word needles as whole tokens, plural-insensitive', () => {
+    // both needles singularize to "fiber" and match the "fiber" token
+    expect(phraseHits('We need fiber cabling', ['fiber', 'fibers'])).toEqual(['fiber', 'fibers']);
+    expect(phraseHits('Fleet of vehicles', ['vehicle'])).toEqual(['vehicle']);
   });
   it('matches multi-word needles as substrings', () => {
     expect(phraseHits('structured cabling project', ['structured cabling', 'voip'])).toEqual([

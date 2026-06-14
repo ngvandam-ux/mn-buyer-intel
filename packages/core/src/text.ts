@@ -12,6 +12,19 @@ const STOPWORDS = new Set([
   'rfp','rfq','rfi','bid','solicitation','proposal','request','services','service',
 ]);
 
+/**
+ * Conservative singularizer for keyword matching recall (platforms→platform,
+ * cameras→camera, facilities→facility). Leaves short words and "-ss" words alone.
+ */
+export function singularize(word: string): string {
+  if (word.length <= 3) return word;
+  if (word.endsWith('ies')) return `${word.slice(0, -3)}y`;
+  if (/(ses|xes|zes|ches|shes)$/.test(word)) return word.slice(0, -2);
+  if (word.endsWith('ss')) return word;
+  if (word.endsWith('s')) return word.slice(0, -1);
+  return word;
+}
+
 /** Lowercase, strip punctuation to spaces, collapse whitespace. */
 export function normalizeText(input: string | null | undefined): string {
   if (!input) return '';
@@ -35,7 +48,7 @@ export function collapseWhitespace(input: string | null | undefined): string {
 export function tokenize(input: string | null | undefined): Set<string> {
   const out = new Set<string>();
   for (const tok of normalizeText(input).split(' ')) {
-    if (tok.length >= 3 && !STOPWORDS.has(tok)) out.add(tok);
+    if (tok.length >= 3 && !STOPWORDS.has(tok)) out.add(singularize(tok));
   }
   return out;
 }
@@ -55,14 +68,14 @@ export function tokenizeAll(inputs: Array<string | null | undefined>): Set<strin
 export function phraseHits(haystack: string | null | undefined, needles: string[]): string[] {
   const normHay = normalizeText(haystack);
   if (!normHay) return [];
-  const hayTokens = new Set(normHay.split(' '));
+  const hayTokens = new Set(normHay.split(' ').map(singularize));
   const hits: string[] = [];
   for (const raw of needles) {
     const needle = normalizeText(raw);
     if (!needle) continue;
     if (needle.includes(' ')) {
       if (normHay.includes(needle)) hits.push(raw);
-    } else if (hayTokens.has(needle)) {
+    } else if (hayTokens.has(singularize(needle))) {
       hits.push(raw);
     }
   }

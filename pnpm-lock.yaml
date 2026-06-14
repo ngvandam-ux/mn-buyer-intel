@@ -117,6 +117,53 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.21)
 
+  packages/matching:
+    dependencies:
+      '@mn/core':
+        specifier: workspace:*
+        version: link:../core
+      '@mn/db':
+        specifier: workspace:*
+        version: link:../db
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.1
+        version: 22.19.21
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.21)
+
+  scripts:
+    dependencies:
+      '@mn/connectors':
+        specifier: workspace:*
+        version: link:../packages/connectors
+      '@mn/core':
+        specifier: workspace:*
+        version: link:../packages/core
+      '@mn/db':
+        specifier: workspace:*
+        version: link:../packages/db
+      '@mn/ingest':
+        specifier: workspace:*
+        version: link:../packages/ingest
+      '@mn/matching':
+        specifier: workspace:*
+        version: link:../packages/matching
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.1
+        version: 22.19.21
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.4
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
 packages:
 
   '@drizzle-team/brocli@0.10.2':

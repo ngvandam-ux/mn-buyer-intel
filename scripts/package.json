@@ -1,0 +1,24 @@
+{
+  "name": "@mn/scripts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "tsx capture.ts",
+    "seed": "tsx seed.ts",
+    "ingest": "tsx ingest.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mn/connectors": "workspace:*",
+    "@mn/core": "workspace:*",
+    "@mn/db": "workspace:*",
+    "@mn/ingest": "workspace:*",
+    "@mn/matching": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
