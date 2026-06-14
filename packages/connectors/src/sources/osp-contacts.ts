@@ -25,12 +25,13 @@ function officeFromHeading(text: string): string | null {
   return null;
 }
 
-/** Derive a display name from a First.Last email local part. */
+/** First+Last from a First.Last(.X) email local part — used to locate the rendered name. */
 function nameFromEmail(email: string): string | null {
   const local = email.split('@')[0] ?? '';
   const parts = local.split('.').filter((p) => /^[a-z]+$/i.test(p));
   if (parts.length < 2) return null;
-  return parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+  const picked = parts.length === 2 ? parts : [parts[0]!, parts[parts.length - 1]!];
+  return picked.map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
 }
 
 export const ospContactsConnector: SourceConnector = {
@@ -97,16 +98,17 @@ export const ospContactsConnector: SourceConnector = {
       if (!email) return;
       const ctxText = $el.closest('p,li,td,div').text().replace(/\s+/g, ' ').trim();
       if (!/Phone:/i.test(ctxText)) return; // skip generic help-line / bare emails
-      const name = nameFromEmail(email);
-      if (!name) return;
+      const emailName = nameFromEmail(email);
+      if (!emailName) return;
       const phone = ctxText.match(/Phone:\s*([()\d][()\d\s-]{6,})/i)?.[1]?.trim() ?? null;
-      // Title = text before "Phone:", with the leading name stripped.
       const beforePhone = ctxText.split(/Phone:/i)[0]?.trim() ?? '';
-      let title: string | null =
-        beforePhone.toLowerCase().startsWith(name.toLowerCase())
-          ? beforePhone.slice(name.length).trim()
-          : beforePhone.replace(/^\S+\s+\S+\s*/, '').trim();
-      title = title || null;
+      const words = beforePhone.split(/\s+/).filter(Boolean);
+      const wordCount = emailName.split(' ').length;
+      // Prefer the actual name as rendered on the page (so the stored name is backed by the
+      // evidence snippet); the email only tells us how many leading words form the name.
+      const startsWithName = beforePhone.toLowerCase().startsWith(emailName.toLowerCase());
+      const name = startsWithName && words.length >= wordCount ? words.slice(0, wordCount).join(' ') : emailName;
+      const title = (startsWithName ? beforePhone.slice(name.length).trim() : words.slice(wordCount).join(' ')) || null;
       const key = `${email}|${title ?? ''}|${currentOffice ?? ''}`;
       if (seen.has(key)) return;
       seen.add(key);

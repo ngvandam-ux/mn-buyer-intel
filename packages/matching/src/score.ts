@@ -129,7 +129,9 @@ export function scoreOpportunity(
   const matchedCats = [...seller.categories].filter((c) => oppCats.has(c));
   const categoryMatch = matchedCats.length > 0;
   if (categoryMatch) {
-    const ratio = matchedCats.length / Math.max(1, oppCats.size);
+    // Score by how well the seller's relevant categories cover, not how broadly the
+    // opportunity was tagged — a perfect single-category hit earns full credit.
+    const ratio = matchedCats.length / Math.max(1, Math.min(seller.categories.size, oppCats.size));
     const contribution = round1(weights.category * Math.min(1, ratio));
     reasons.push({
       factor: 'category',
@@ -143,7 +145,8 @@ export function scoreOpportunity(
   const oppTokens = tokenizeAll([opp.title, opp.description, opp.businessUnit, opp.solicitationType]);
   const shared = [...seller.tokens].filter((t) => oppTokens.has(t));
   const textMatch = shared.length >= 2;
-  if (shared.length > 0) {
+  // Award text points only at the same threshold that counts toward relevance/tier.
+  if (textMatch) {
     const contribution = round1(weights.opportunity_text * Math.min(1, shared.length / 3));
     reasons.push({
       factor: 'opportunity_text',
@@ -158,7 +161,13 @@ export function scoreOpportunity(
     (best, s) => (best === null || s.strength > best.strength ? s : best),
     null,
   );
-  const hasOpen = opp.status === 'open' || signals.some((s) => s.signalType === 'open_solicitation');
+  // The opportunity's own status is authoritative: an entity-rolled-up open_solicitation
+  // signal must NOT make an awarded/closed opportunity look open.
+  const hasOpen =
+    opp.status === 'open' ||
+    (opp.status !== 'awarded' &&
+      opp.status !== 'closed' &&
+      signals.some((s) => s.signalType === 'open_solicitation'));
   const hasExpiring = signals.some((s) => s.signalType === 'expiring_contract');
   const hasHistory = signals.some((s) => s.signalType === 'award_history');
   if (strongest && strongest.strength > 0) {

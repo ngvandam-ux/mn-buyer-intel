@@ -27,6 +27,14 @@ import {
 const asArray = (v: unknown): string[] =>
   Array.isArray(v) ? v.map(String).map((s) => s.trim()).filter(Boolean) : [];
 
+const clampNum = (v: unknown, def: number, min: number, max: number): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : def;
+};
+
+// Connectors with a live refresh currently running — prevents overlapping scrapes.
+const refreshing = new Set<string>();
+
 function sellerInputFromBody(body: Record<string, unknown>): SellerInput {
   return {
     companyName: String(body.companyName ?? '').trim(),
@@ -71,7 +79,7 @@ export function registerRoutes(app: FastifyInstance, db: AppDatabase): void {
       q: q.q,
       source: q.source,
       entityType: q.entityType,
-      minConfidence: q.minConfidence ? Number(q.minConfidence) : undefined,
+      minConfidence: q.minConfidence !== undefined ? clampNum(q.minConfidence, 0, 0, 1) : undefined,
     });
   });
   app.get('/api/opportunities/:id', async (req, reply) => {
@@ -108,19 +116,26 @@ export function registerRoutes(app: FastifyInstance, db: AppDatabase): void {
   app.get('/api/sources', async () => getSourceHealth(db));
   app.get('/api/refresh-jobs', async (req) => {
     const q = req.query as Record<string, string>;
-    return listRefreshJobs(db, q.limit ? Number(q.limit) : 50);
+    return listRefreshJobs(db, clampNum(q.limit, 50, 1, 500));
   });
   app.get('/api/review-queue', async (req) => {
     const q = req.query as Record<string, string>;
-    return getReviewQueue(db, q.threshold ? Number(q.threshold) : 0.7);
+    return getReviewQueue(db, clampNum(q.threshold, 0.7, 0, 1));
   });
   app.post('/api/refresh/:connectorId', async (req, reply) => {
     const { connectorId } = req.params as { connectorId: string };
     const connector = getConnector(connectorId);
     if (!connector) return reply.code(404).send({ error: `unknown connector ${connectorId}` });
-    const ctx = createFetchContext(connector.meta.id);
-    const summary = await ingestConnector(db, connector, ctx);
-    return summary;
+    if (refreshing.has(connectorId)) {
+      return reply.code(409).send({ error: 'refresh already in progress for this connector' });
+    }
+    refreshing.add(connectorId);
+    try {
+      const ctx = createFetchContext(connector.meta.id);
+      return await ingestConnector(db, connector, ctx);
+    } finally {
+      refreshing.delete(connectorId);
+    }
   });
 
   // --- seller profiles + matching ---

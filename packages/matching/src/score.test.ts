@@ -110,6 +110,27 @@ describe('scoreOpportunity — tiers', () => {
     expect(out.reasons.map((r) => r.factor)).toContain('priority_language');
   });
 
+  it('does NOT promote an AWARDED opportunity to high even if an entity-level open_solicitation signal leaks in', () => {
+    const out = scoreOpportunity(
+      telecomSeller,
+      input({
+        opportunity: {
+          id: 'opp5',
+          title: 'Fiber Optic Network Expansion',
+          description: 'fiber optic cabling',
+          status: 'awarded',
+          businessUnit: null,
+          solicitationType: null,
+          categoryKeys: ['telecom'],
+        },
+        hasNamedContact: true,
+        // a stray entity-rolled-up open signal must not make a closed/awarded opp look open
+        signals: [{ signalType: 'open_solicitation', strength: 1, title: 'Open (other opp)', detail: null }],
+      }),
+    );
+    expect(out.tier).not.toBe('high');
+  });
+
   it('NOT RELEVANT: an open solicitation with a contact but no topical overlap is not a match', () => {
     const out = scoreOpportunity(
       telecomSeller,

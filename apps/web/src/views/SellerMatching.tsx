@@ -1,6 +1,6 @@
 import type { MatchResults, MatchView } from '@mn/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { type SellerInputBody, api } from '../api.ts';
 import {
@@ -60,6 +60,8 @@ export function SellerMatching() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [results, setResults] = useState<MatchResults | null>(null);
   const [tab, setTab] = useState<'opportunities' | 'buyers'>('opportunities');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const latestReq = useRef<string | null>(null);
 
   // Auto-select the first saved profile once loaded.
   useEffect(() => {
@@ -71,25 +73,35 @@ export function SellerMatching() {
 
   async function selectProfile(id: string) {
     setSelectedId(id);
-    const p = await api.sellerProfile(id);
-    setForm({
-      companyName: p.companyName,
-      capabilities: toStr(p.capabilities),
-      services: toStr(p.services),
-      products: toStr(p.products),
-      keywords: toStr(p.keywords),
-      certifications: toStr(p.certifications),
-      geographies: toStr(p.geographies),
-      categories: p.categories ?? [],
-    });
-    const m = await api.sellerMatches(id);
-    setResults(m);
+    setLoadError(null);
+    latestReq.current = id;
+    try {
+      const p = await api.sellerProfile(id);
+      if (latestReq.current !== id) return; // a newer selection superseded this one
+      setForm({
+        companyName: p.companyName,
+        capabilities: toStr(p.capabilities),
+        services: toStr(p.services),
+        products: toStr(p.products),
+        keywords: toStr(p.keywords),
+        certifications: toStr(p.certifications),
+        geographies: toStr(p.geographies),
+        categories: p.categories ?? [],
+      });
+      const m = await api.sellerMatches(id);
+      if (latestReq.current !== id) return;
+      setResults(m);
+    } catch (err) {
+      if (latestReq.current === id) setLoadError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   function newProfile() {
     setSelectedId(null);
     setForm(EMPTY);
     setResults(null);
+    setLoadError(null);
+    latestReq.current = null;
   }
 
   const preview = useMutation({
@@ -214,6 +226,11 @@ export function SellerMatching() {
           }
         >
           <div className="card-body stack">
+            {(loadError || preview.error || save.error) && (
+              <div style={{ color: 'var(--danger)', fontSize: 13 }}>
+                {loadError ?? (preview.error ?? save.error)?.toString()}
+              </div>
+            )}
             {!results ? (
               <EmptyState>Pick a profile or fill the form, then “Preview” or “Create &amp; match”.</EmptyState>
             ) : matches.length === 0 ? (

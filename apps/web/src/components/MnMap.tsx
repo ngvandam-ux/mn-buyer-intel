@@ -1,8 +1,11 @@
 import type { EntityListItem } from '@mn/core';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { entityTypeLabel } from './ui.tsx';
+
+const escapeHtml = (s: string) =>
+  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 /**
  * Minnesota buyer map. Plots entities that have coordinates. Geocoding entities to
@@ -12,7 +15,7 @@ import { entityTypeLabel } from './ui.tsx';
 export function MnMap({ entities }: { entities: EntityListItem[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const withCoords = entities.filter((e) => e.lat != null && e.lng != null);
+  const withCoords = useMemo(() => entities.filter((e) => e.lat != null && e.lng != null), [entities]);
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -37,7 +40,7 @@ export function MnMap({ entities }: { entities: EntityListItem[] }) {
     const markers: maplibregl.Marker[] = [];
     for (const e of withCoords) {
       const popup = new maplibregl.Popup({ offset: 16 }).setHTML(
-        `<strong>${e.name}</strong><br/><span style="color:#64748b">${entityTypeLabel(e.entityType)}</span>`,
+        `<strong>${escapeHtml(e.name)}</strong><br/><span style="color:#64748b">${escapeHtml(entityTypeLabel(e.entityType))}</span>`,
       );
       const m = new maplibregl.Marker({ color: '#1e4e8c' }).setLngLat([e.lng!, e.lat!]).setPopup(popup).addTo(map);
       markers.push(m);

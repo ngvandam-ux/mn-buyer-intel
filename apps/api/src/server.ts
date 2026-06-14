@@ -6,7 +6,16 @@ import { registerRoutes } from './routes.js';
 export async function buildServer(db?: AppDatabase): Promise<FastifyInstance> {
   const database = db ?? (await getDb());
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
-  await app.register(cors, { origin: true });
+  // Restrict CORS to the known web origin(s) rather than reflecting any origin.
+  const allowed = new Set(
+    (process.env.WEB_ORIGIN ?? 'http://localhost:5173,http://127.0.0.1:5173')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  await app.register(cors, {
+    origin: (origin, cb) => cb(null, !origin || allowed.has(origin)),
+  });
   registerRoutes(app, database);
   app.setErrorHandler((err: Error, _req, reply) => {
     app.log.error(err);

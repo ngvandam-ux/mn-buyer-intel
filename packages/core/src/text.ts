@@ -21,6 +21,8 @@ export function singularize(word: string): string {
   if (word.endsWith('ies')) return `${word.slice(0, -3)}y`;
   if (/(ses|xes|zes|ches|shes)$/.test(word)) return word.slice(0, -2);
   if (word.endsWith('ss')) return word;
+  // Don't strip a trailing 's' off words that are not plurals (analysis, status, virus).
+  if (/(?:is|us)$/.test(word)) return word;
   if (word.endsWith('s')) return word.slice(0, -1);
   return word;
 }

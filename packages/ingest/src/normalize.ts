@@ -23,6 +23,7 @@ import {
   entities,
   eq,
   evidenceSpans,
+  inArray,
   offices,
   opportunities,
   opportunityCategories,
@@ -235,10 +236,11 @@ export async function processOpportunity(ctx: NormalizeContext, ex: Extraction):
     new Set([...(f.categoryKeys ?? []), ...detectCategories(`${f.title} ${f.description ?? ''}`)]),
   );
 
-  // Resolve by externalId (preferred) else entityId+title.
-  const conds = [eq(opportunities.entityId, entityId)];
-  if (f.externalId) conds.push(eq(opportunities.externalId, f.externalId));
-  else conds.push(sql`lower(${opportunities.title}) = ${lc(f.title)}`);
+  // Resolve by externalId alone when present (source-native id is globally unique, so a
+  // drifting buyer-name text won't create a duplicate); else fall back to entityId+title.
+  const conds = f.externalId
+    ? [eq(opportunities.externalId, f.externalId)]
+    : [eq(opportunities.entityId, entityId), sql`lower(${opportunities.title}) = ${lc(f.title)}`];
   const found = await ctx.db
     .select({ id: opportunities.id })
     .from(opportunities)
@@ -286,6 +288,17 @@ export async function processOpportunity(ctx: NormalizeContext, ex: Extraction):
         .onConflictDoNothing();
     }
   }
+
+  // Clear any previously-derived status signals for this opportunity so a status change
+  // on re-ingest (e.g. open → closed/awarded) doesn't leave a stale open_solicitation.
+  await ctx.db
+    .delete(signals)
+    .where(
+      and(
+        eq(signals.opportunityId, id),
+        inArray(signals.signalType, ['open_solicitation', 'upcoming_event', 'award_history']),
+      ),
+    );
 
   // Derived signal from the opportunity's status.
   const derived = derivedSignalType(status);

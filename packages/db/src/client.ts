@@ -55,6 +55,8 @@ export async function createDb(env: NodeJS.ProcessEnv = process.env): Promise<Db
   const cfg = resolveDbConfig(env);
   if (cfg.kind === 'postgres') {
     const pool = new pg.Pool({ connectionString: cfg.connectionString! });
+    // An idle client emitting 'error' with no listener crashes the process — log instead.
+    pool.on('error', (err) => console.error('[db] idle pg client error:', err));
     const db = drizzleNode(pool, { schema }) as unknown as AppDatabase;
     return { db, kind: 'postgres', raw: pool, close: () => pool.end() };
   }

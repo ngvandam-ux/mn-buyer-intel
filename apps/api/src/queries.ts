@@ -29,6 +29,7 @@ import {
   evidenceSpans,
   ilike,
   inArray,
+  isNotNull,
   offices,
   opportunities,
   refreshJobs,
@@ -39,6 +40,9 @@ import {
 } from '@mn/db';
 
 const num = (v: unknown): number => Number(v ?? 0);
+
+/** Escape LIKE/ILIKE metacharacters so user search text is treated literally. */
+const escapeLike = (s: string): string => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 // ---------------------------------------------------------------------------
 // Evidence
@@ -101,6 +105,7 @@ export interface OpportunityFilters {
   q?: string;
   source?: string;
   entityType?: string;
+  entityId?: string;
   minConfidence?: number;
   limit?: number;
 }
@@ -112,8 +117,9 @@ export async function listOpportunities(
   const conds = [];
   if (f.status) conds.push(eq(opportunities.status, f.status as never));
   if (f.category) conds.push(sql`${f.category} = any(${opportunities.categoryKeys})`);
-  if (f.q) conds.push(ilike(opportunities.title, `%${f.q}%`));
+  if (f.q) conds.push(ilike(opportunities.title, `%${escapeLike(f.q)}%`));
   if (f.entityType) conds.push(eq(entities.entityType, f.entityType as never));
+  if (f.entityId) conds.push(eq(opportunities.entityId, f.entityId));
   if (typeof f.minConfidence === 'number') conds.push(sql`${opportunities.confidence} >= ${f.minConfidence}`);
   if (f.source) conds.push(eq(sourceDocuments.connectorId, f.source));
 
@@ -167,12 +173,13 @@ export async function listEntities(db: AppDatabase, f: EntityFilters = {}): Prom
   const conds = [];
   if (f.entityType) conds.push(eq(entities.entityType, f.entityType as never));
   if (f.jurisdiction) conds.push(eq(entities.jurisdiction, f.jurisdiction));
-  if (f.q) conds.push(ilike(entities.name, `%${f.q}%`));
+  if (f.q) conds.push(ilike(entities.name, `%${escapeLike(f.q)}%`));
   const ents = await db
     .select()
     .from(entities)
     .where(conds.length ? and(...conds) : undefined)
-    .orderBy(entities.name);
+    .orderBy(entities.name)
+    .limit(1000);
 
   const oppCounts = await db
     .select({ entityId: opportunities.entityId, n: count() })
@@ -220,7 +227,7 @@ export async function getEntityDetail(db: AppDatabase, id: string): Promise<Enti
   const [offs, cons, opps, sigs] = await Promise.all([
     db.select().from(offices).where(eq(offices.entityId, id)),
     db.select().from(contacts).where(eq(contacts.entityId, id)),
-    listOpportunities(db, {}).then((all) => all.filter((o) => o.entityId === id)),
+    listOpportunities(db, { entityId: id }),
     db.select().from(signals).where(eq(signals.entityId, id)).orderBy(desc(signals.strength)),
   ]);
   const targetIds = [id, ...offs.map((o) => o.id), ...cons.map((c) => c.id), ...opps.map((o) => o.id), ...sigs.map((s) => s.id)];
@@ -238,7 +245,7 @@ export async function listContacts(
 ): Promise<ContactListItem[]> {
   const conds = [];
   if (f.entityId) conds.push(eq(contacts.entityId, f.entityId));
-  if (f.q) conds.push(ilike(contacts.name, `%${f.q}%`));
+  if (f.q) conds.push(ilike(contacts.name, `%${escapeLike(f.q)}%`));
   const rows = await db
     .select({
       contact: contacts,
@@ -249,7 +256,8 @@ export async function listContacts(
     .leftJoin(entities, eq(contacts.entityId, entities.id))
     .leftJoin(offices, eq(contacts.officeId, offices.id))
     .where(conds.length ? and(...conds) : undefined)
-    .orderBy(contacts.name);
+    .orderBy(contacts.name)
+    .limit(1000);
   return rows.map((r) => ({ ...r.contact, entityName: r.entityName, officeName: r.officeName }));
 }
 
@@ -260,7 +268,7 @@ export async function listSignals(
   const conds = [];
   if (f.type) conds.push(eq(signals.signalType, f.type as never));
   if (f.entityId) conds.push(eq(signals.entityId, f.entityId));
-  if (f.q) conds.push(ilike(signals.title, `%${f.q}%`));
+  if (f.q) conds.push(ilike(signals.title, `%${escapeLike(f.q)}%`));
   const rows = await db
     .select({
       signal: signals,
@@ -364,7 +372,12 @@ export async function getDashboard(db: AppDatabase): Promise<DashboardDTO> {
     listCategories(db),
     listOpportunities(db, { limit: 8 }),
     getSourceHealth(db),
-    db.select().from(refreshJobs).orderBy(desc(refreshJobs.finishedAt)).limit(1),
+    db
+      .select()
+      .from(refreshJobs)
+      .where(isNotNull(refreshJobs.finishedAt))
+      .orderBy(desc(refreshJobs.finishedAt))
+      .limit(1),
   ]);
 
   return {
