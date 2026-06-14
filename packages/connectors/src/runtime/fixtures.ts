@@ -29,7 +29,7 @@ export function latestFixture(connectorId: string): FixtureFile | null {
   const dir = resolve(fixturesRoot(), connectorId);
   if (!existsSync(dir)) return null;
   const files = readdirSync(dir)
-    .filter((f) => f.endsWith('.html') || f.endsWith('.json'))
+    .filter((f) => f.endsWith('.html') || f.endsWith('.json') || f.endsWith('.txt'))
     .sort();
   const name = files.at(-1);
   if (!name) return null;
@@ -45,7 +45,11 @@ export function fixtureAsRawDocument(connectorId: string, url: string): RawDocum
     connectorId,
     url,
     fetchedAt: f.capturedAt ?? new Date().toISOString(),
-    contentType: f.path.endsWith('.json') ? 'application/json' : 'text/html',
+    contentType: f.path.endsWith('.json')
+      ? 'application/json'
+      : f.path.endsWith('.txt')
+        ? 'text/plain'
+        : 'text/html',
     body: f.body,
     sha256: sha256(f.body),
   };

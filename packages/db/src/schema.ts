@@ -23,6 +23,8 @@ import type {
 } from '@mn/core';
 import { relations, sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
+  boolean,
   doublePrecision,
   index,
   integer,
@@ -104,6 +106,7 @@ export const entities = pgTable(
     jurisdiction: text('jurisdiction').notNull().default('MN'),
     county: text('county'),
     city: text('city'),
+    metro: boolean('metro').notNull().default(false),
     lat: doublePrecision('lat'),
     lng: doublePrecision('lng'),
     website: text('website'),
@@ -160,6 +163,14 @@ export const contacts = pgTable(
     title: text('title'),
     email: text('email'),
     phone: text('phone'),
+    // Org-chart / decision-maker fields (Phase 3).
+    roleCategory: text('role_category'),
+    titleRank: integer('title_rank'),
+    authorityNote: text('authority_note'),
+    reportsToContactId: uuid('reports_to_contact_id').references((): AnyPgColumn => contacts.id, {
+      onDelete: 'set null',
+    }),
+    isDecisionMaker: boolean('is_decision_maker').notNull().default(false),
     sourceDocumentId: uuid('source_document_id').references(() => sourceDocuments.id, {
       onDelete: 'set null',
     }),
@@ -269,6 +280,36 @@ export const signals = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// budget_lines — quantitative budget / appropriation intel (Phase 1).
+// ---------------------------------------------------------------------------
+
+export const budgetLines = pgTable(
+  'budget_lines',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    entityId: uuid('entity_id').references(() => entities.id, { onDelete: 'cascade' }),
+    program: text('program').notNull(),
+    categoryKeys: text('category_keys').array().notNull().default(sql`ARRAY[]::text[]`),
+    fiscalPeriod: text('fiscal_period'),
+    fund: text('fund'),
+    amount: doublePrecision('amount'),
+    priorAmount: doublePrecision('prior_amount'),
+    trendDelta: doublePrecision('trend_delta'),
+    narrative: text('narrative'),
+    sourceDocumentId: uuid('source_document_id').references(() => sourceDocuments.id, {
+      onDelete: 'set null',
+    }),
+    confidence: real('confidence').notNull().default(1),
+    extractedAt: extractedAt(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('budget_lines_entity_idx').on(t.entityId),
+    index('budget_lines_period_idx').on(t.fiscalPeriod),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // seller_profiles — the user's company capabilities.
 // ---------------------------------------------------------------------------
 
@@ -346,6 +387,11 @@ export const entitiesRelations = relations(entities, ({ many }) => ({
   contacts: many(contacts),
   opportunities: many(opportunities),
   signals: many(signals),
+  budgetLines: many(budgetLines),
+}));
+
+export const budgetLinesRelations = relations(budgetLines, ({ one }) => ({
+  entity: one(entities, { fields: [budgetLines.entityId], references: [entities.id] }),
 }));
 
 export const officesRelations = relations(offices, ({ one, many }) => ({
@@ -413,6 +459,7 @@ export const tables = {
   opportunities,
   opportunityCategories,
   signals,
+  budgetLines,
   sellerProfiles,
   matches,
   refreshJobs,

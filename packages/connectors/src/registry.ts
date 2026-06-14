@@ -4,6 +4,7 @@
  */
 
 import type { SourceConnector } from '@mn/core';
+import { mmbBudgetConnector } from './sources/mmb-budget.js';
 import { minnstateConnector } from './sources/minnstate.js';
 import { ospContactsConnector } from './sources/osp-contacts.js';
 import { ospSolicitationsConnector } from './sources/osp-solicitations.js';
@@ -16,6 +17,7 @@ import { sourcewellConnector } from './sources/sourcewell.js';
 import { supplierPortalConnector } from './sources/supplier-portal.js';
 import { umnConnector } from './sources/umn.js';
 
+export { mmbBudgetConnector } from './sources/mmb-budget.js';
 export { minnstateConnector } from './sources/minnstate.js';
 export { ospContactsConnector } from './sources/osp-contacts.js';
 export { ospSolicitationsConnector } from './sources/osp-solicitations.js';
@@ -35,6 +37,7 @@ export const CONNECTORS: SourceConnector[] = [
   ospContactsConnector,
   minnstateConnector,
   umnConnector,
+  mmbBudgetConnector,
   mndotConnector,
   metroCouncilConnector,
   nationalGuardConnector,

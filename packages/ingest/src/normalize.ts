@@ -9,6 +9,7 @@
 import type { EntityType, Extraction, OpportunityStatus, SignalType } from '@mn/core';
 import { SIGNAL_TYPE_STRENGTH, detectCategories } from '@mn/core';
 import type {
+  BudgetFields,
   ContactFields,
   EntityFields,
   OfficeFields,
@@ -18,6 +19,7 @@ import type {
 import {
   type AppDatabase,
   and,
+  budgetLines,
   categories,
   contacts,
   entities,
@@ -346,6 +348,50 @@ export async function processSignal(ctx: NormalizeContext, ex: Extraction): Prom
     strength: f.strength ?? SIGNAL_TYPE_STRENGTH[f.signalType],
   });
   if (id) await addEvidence(ctx, ex, 'signals', id);
+}
+
+export async function processBudget(ctx: NormalizeContext, ex: Extraction): Promise<void> {
+  const f = ex.fields as unknown as BudgetFields;
+  const entityId = await resolveEntity(ctx, f.entityName, f.entityType ?? 'state_agency');
+  const found = await ctx.db
+    .select({ id: budgetLines.id })
+    .from(budgetLines)
+    .where(
+      and(
+        eq(budgetLines.entityId, entityId),
+        sql`lower(${budgetLines.program}) = ${lc(f.program)}`,
+        f.fiscalPeriod
+          ? eq(budgetLines.fiscalPeriod, f.fiscalPeriod)
+          : sql`${budgetLines.fiscalPeriod} is null`,
+      ),
+    )
+    .limit(1);
+
+  const values = {
+    entityId,
+    program: f.program,
+    categoryKeys: f.categoryKeys ?? [],
+    fiscalPeriod: f.fiscalPeriod ?? null,
+    fund: f.fund ?? null,
+    amount: f.amount ?? null,
+    priorAmount: f.priorAmount ?? null,
+    trendDelta: f.trendDelta ?? null,
+    narrative: f.narrative ?? null,
+    sourceDocumentId: ctx.sourceDocumentId,
+    extractedAt: ctx.at,
+    confidence: ex.confidence,
+  };
+
+  let id: string;
+  if (found[0]) {
+    id = found[0].id;
+    await ctx.db.update(budgetLines).set(values).where(eq(budgetLines.id, id));
+  } else {
+    const [row] = await ctx.db.insert(budgetLines).values(values).returning();
+    id = row!.id;
+    ctx.counts.upserted += 1;
+  }
+  await addEvidence(ctx, ex, 'budget_lines', id);
 }
 
 interface SignalInput {

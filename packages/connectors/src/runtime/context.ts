@@ -1,5 +1,6 @@
 import type { FetchContext } from '@mn/core';
 import { makeBrowserFetch } from './browser-fetch.js';
+import { makePdfFetch } from './pdf-fetch.js';
 import { makeStaticFetch } from './static-fetch.js';
 
 export interface FetchContextOptions {
@@ -17,6 +18,7 @@ export function createFetchContext(connectorId: string, opts: FetchContextOption
   const log = opts.log ?? ((m: string) => console.log(`[${connectorId}] ${m}`));
   const ctx: FetchContext = {
     fetchStatic: makeStaticFetch(connectorId, now),
+    fetchPdf: makePdfFetch(connectorId, now),
     now,
     log,
   };

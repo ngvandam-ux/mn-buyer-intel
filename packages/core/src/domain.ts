@@ -33,6 +33,7 @@ export interface Entity extends Traceable {
   jurisdiction: string;
   county: string | null;
   city: string | null;
+  metro: boolean;
   lat: number | null;
   lng: number | null;
   website: string | null;
@@ -57,8 +58,31 @@ export interface Contact extends Traceable {
   title: string | null;
   email: string | null;
   phone: string | null;
+  /** Purchasing area this person owns, e.g. 'it_hardware' (Phase 3 org charts). */
+  roleCategory: string | null;
+  /** Seniority 0–100 for org-chart ranking. */
+  titleRank: number | null;
+  /** Published approval scope / dollar threshold, when stated. */
+  authorityNote: string | null;
+  /** Self-reference up the org chart. */
+  reportsToContactId: string | null;
+  isDecisionMaker: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BudgetLine extends Traceable {
+  id: string;
+  entityId: string | null;
+  program: string;
+  categoryKeys: string[];
+  fiscalPeriod: string | null;
+  fund: string | null;
+  amount: number | null;
+  priorAmount: number | null;
+  trendDelta: number | null;
+  narrative: string | null;
+  createdAt: string;
 }
 
 export interface OpportunityLineItem {

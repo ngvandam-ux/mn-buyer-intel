@@ -48,6 +48,8 @@ export interface FetchContext {
   fetchStatic(url: string, init?: StaticFetchInit): Promise<RawDocument>;
   /** Present only when a browser runtime is available. Scaffolds must degrade gracefully. */
   fetchBrowser?(url: string, opts?: BrowserFetchOptions): Promise<RawDocument>;
+  /** Fetch a PDF and return its extracted text as the RawDocument body. */
+  fetchPdf?(url: string): Promise<RawDocument>;
   /** Injectable clock for deterministic tests. Returns an ISO-8601 string. */
   now(): string;
   log(message: string): void;

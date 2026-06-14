@@ -20,7 +20,8 @@
     "@mn/core": "workspace:*",
     "cheerio": "^1.0.0",
     "domhandler": "^5.0.3",
-    "playwright": "^1.49.1"
+    "playwright": "^1.49.1",
+    "unpdf": "^0.12.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",

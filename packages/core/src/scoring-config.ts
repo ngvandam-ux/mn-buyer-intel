@@ -17,12 +17,13 @@ export type ScoreWeights = Record<ScoreFactorKey, number>;
 
 /** Max points each factor can contribute. Sum is 100. */
 export const DEFAULT_SCORE_WEIGHTS: ScoreWeights = {
-  category: 30,
-  opportunity_text: 22,
-  signal_type: 18,
-  office_name: 10,
-  priority_language: 8,
-  contact_presence: 7,
+  category: 26,
+  opportunity_text: 20,
+  signal_type: 16,
+  budget_fit: 12,
+  office_name: 8,
+  priority_language: 7,
+  contact_presence: 6,
   geography: 5,
 };
 

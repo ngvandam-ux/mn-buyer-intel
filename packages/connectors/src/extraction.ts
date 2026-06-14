@@ -74,6 +74,19 @@ export interface SignalFields {
   strength?: number;
 }
 
+export interface BudgetFields {
+  entityName: string;
+  entityType?: EntityType;
+  program: string;
+  categoryKeys?: string[];
+  fiscalPeriod?: string | null;
+  fund?: string | null;
+  amount?: number | null;
+  priorAmount?: number | null;
+  trendDelta?: number | null;
+  narrative?: string | null;
+}
+
 interface BuildOpts {
   confidence?: number;
   partial?: boolean;
@@ -101,6 +114,7 @@ export const extract = {
   opportunity: (f: OpportunityFields, ev: EvidenceSpan[], o?: BuildOpts) =>
     build('opportunity', f, ev, o),
   signal: (f: SignalFields, ev: EvidenceSpan[], o?: BuildOpts) => build('signal', f, ev, o),
+  budget: (f: BudgetFields, ev: EvidenceSpan[], o?: BuildOpts) => build('budget', f, ev, o),
 };
 
 // Typed re-reads of `fields` for the ingest layer.
@@ -110,4 +124,5 @@ export type ExtractionFieldsByKind = {
   contact: ContactFields;
   opportunity: OpportunityFields;
   signal: SignalFields;
+  budget: BudgetFields;
 };

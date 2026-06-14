@@ -6,6 +6,7 @@
  */
 
 import type {
+  BudgetLine as CoreBudgetLine,
   Contact as CoreContact,
   Entity as CoreEntity,
   Match as CoreMatch,
@@ -17,6 +18,7 @@ import type {
   SourceDocument as CoreSourceDocument,
 } from '@mn/core';
 import type {
+  budgetLines,
   contacts,
   entities,
   matches,
@@ -46,6 +48,8 @@ export type MatchRow = typeof matches.$inferSelect;
 export type MatchInsert = typeof matches.$inferInsert;
 export type RefreshJobRow = typeof refreshJobs.$inferSelect;
 export type RefreshJobInsert = typeof refreshJobs.$inferInsert;
+export type BudgetLineRow = typeof budgetLines.$inferSelect;
+export type BudgetLineInsert = typeof budgetLines.$inferInsert;
 
 // `U extends T ? U : never` — errors if a row stops conforming to the domain model.
 type AssertAssignable<T, U extends T> = U;
@@ -59,3 +63,4 @@ export type _assertSourceDocument = AssertAssignable<CoreSourceDocument, SourceD
 export type _assertSellerProfile = AssertAssignable<CoreSellerProfile, SellerProfileRow>;
 export type _assertMatch = AssertAssignable<CoreMatch, MatchRow>;
 export type _assertRefreshJob = AssertAssignable<CoreRefreshJob, RefreshJobRow>;
+export type _assertBudgetLine = AssertAssignable<CoreBudgetLine, BudgetLineRow>;

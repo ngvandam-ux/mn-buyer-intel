@@ -13,9 +13,15 @@ const DATA_DIR = mkdtempSync(join(tmpdir(), 'mn-ingest-'));
 process.env.DATABASE_URL = '';
 process.env.PGLITE_DATA = DATA_DIR;
 
-import { ospContactsConnector, sourcewellConnector, supplierPortalConnector } from '@mn/connectors';
+import {
+  mmbBudgetConnector,
+  ospContactsConnector,
+  sourcewellConnector,
+  supplierPortalConnector,
+} from '@mn/connectors';
 import {
   type DbHandle,
+  budgetLines,
   contacts,
   createDb,
   entities,
@@ -81,6 +87,18 @@ describe('ingest pipeline', () => {
     expect(coop!.entityType).toBe('cooperative_purchasing');
     const sigs = await handle.db.select().from(signals);
     expect(sigs.some((s) => s.signalType === 'cooperative_pathway')).toBe(true);
+  });
+
+  it('ingests MMB budget into budget_lines + a budget_priority signal', async () => {
+    await ingestFromFixture(handle.db, mmbBudgetConnector);
+    const lines = await handle.db.select().from(budgetLines);
+    expect(lines.length).toBeGreaterThanOrEqual(1);
+    const mnit = lines.find((l) => l.categoryKeys.includes('software'));
+    expect(mnit).toBeDefined();
+    expect(mnit!.amount ?? 0).toBeGreaterThan(100_000_000);
+    expect(mnit!.fiscalPeriod).toBe('FY2026-27');
+    const sigs = await handle.db.select().from(signals);
+    expect(sigs.some((s) => s.signalType === 'budget_priority')).toBe(true);
   });
 
   it('ingests OSP contacts with contact_exposure signals', async () => {

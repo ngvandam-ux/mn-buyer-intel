@@ -79,6 +79,8 @@ export interface OpportunityScoringInput {
   hasNamedContact: boolean;
   /** Evidence span ids backing this opportunity, attached to opportunity-derived reasons. */
   evidenceSpanIds: string[];
+  /** Precomputed budget→category fit for this opportunity's buyer (0..1) + a reason. */
+  budgetFit?: { score: number; reason: string; evidenceSpanIds?: string[] } | null;
 }
 
 export interface ScoreOutcome {
@@ -121,7 +123,7 @@ export function scoreOpportunity(
   input: OpportunityScoringInput,
   weights: ScoreWeights = DEFAULT_SCORE_WEIGHTS,
 ): ScoreOutcome {
-  const { opportunity: opp, entity, signals, hasNamedContact, evidenceSpanIds } = input;
+  const { opportunity: opp, entity, signals, hasNamedContact, evidenceSpanIds, budgetFit } = input;
   const reasons: MatchReason[] = [];
 
   // --- category ---
@@ -212,6 +214,17 @@ export function scoreOpportunity(
     });
   }
 
+  // --- budget fit (funded, trending demand in the seller's categories) ---
+  const budgetMatch = Boolean(budgetFit && budgetFit.score > 0);
+  if (budgetFit && budgetFit.score > 0) {
+    reasons.push({
+      factor: 'budget_fit',
+      contribution: round1(weights.budget_fit * clamp(budgetFit.score, 0, 1)),
+      reason: budgetFit.reason,
+      evidenceSpanIds: budgetFit.evidenceSpanIds ?? [],
+    });
+  }
+
   // --- contact presence ---
   if (hasNamedContact) {
     reasons.push({
@@ -234,7 +247,7 @@ export function scoreOpportunity(
   }
 
   const score = clamp(Math.round(reasons.reduce((sum, r) => sum + r.contribution, 0)), 0, 100);
-  const relevant = categoryMatch || textMatch || priorityMatch;
+  const relevant = categoryMatch || textMatch || priorityMatch || budgetMatch;
 
   let tier: MatchTier;
   if (hasOpen && hasNamedContact && categoryMatch) tier = 'high';

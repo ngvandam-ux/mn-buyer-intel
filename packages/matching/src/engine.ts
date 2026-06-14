@@ -8,9 +8,10 @@
  */
 
 import type { MatchReason, MatchTier, MatchTargetType, OpportunityStatus, SignalType } from '@mn/core';
-import { detectCategories } from '@mn/core';
+import { categoryLabel, detectCategories } from '@mn/core';
 import {
   type AppDatabase,
+  budgetLines,
   contacts,
   entities,
   eq,
@@ -50,7 +51,7 @@ const TIER_RANK: Record<MatchTier, number> = { high: 3, medium: 2, low: 1 };
 export async function computeMatches(db: AppDatabase, seller: SellerInput): Promise<ComputedMatches> {
   const vector = buildSellerVector(seller);
 
-  const [oppRows, entRows, sigRows, contactRows, evRows] = await Promise.all([
+  const [oppRows, entRows, sigRows, contactRows, evRows, budgetRows] = await Promise.all([
     db.select().from(opportunities),
     db.select().from(entities),
     db.select().from(signals),
@@ -58,10 +59,46 @@ export async function computeMatches(db: AppDatabase, seller: SellerInput): Prom
     db
       .select({ targetId: evidenceSpans.targetId, targetTable: evidenceSpans.targetTable, id: evidenceSpans.id })
       .from(evidenceSpans),
+    db.select().from(budgetLines),
   ]);
 
   const entityById = new Map(entRows.map((e) => [e.id, e]));
   const entitiesWithContact = new Set(contactRows.map((c) => c.entityId).filter(Boolean) as string[]);
+
+  // Per-entity budget summary for budget→category fit.
+  interface BudgetSummary {
+    categories: Set<string>;
+    totalAmount: number;
+    maxTrend: number;
+    lineIds: string[];
+  }
+  const budgetByEntity = new Map<string, BudgetSummary>();
+  for (const b of budgetRows) {
+    if (!b.entityId) continue;
+    const s = budgetByEntity.get(b.entityId) ?? { categories: new Set(), totalAmount: 0, maxTrend: 0, lineIds: [] };
+    for (const c of b.categoryKeys) s.categories.add(c);
+    s.totalAmount += b.amount ?? 0;
+    if ((b.trendDelta ?? 0) > s.maxTrend) s.maxTrend = b.trendDelta ?? 0;
+    s.lineIds.push(b.id);
+    budgetByEntity.set(b.entityId, s);
+  }
+
+  const budgetFitFor = (entityId: string | null) => {
+    if (!entityId) return null;
+    const s = budgetByEntity.get(entityId);
+    if (!s) return null;
+    const overlap = [...vector.categories].filter((c) => s.categories.has(c));
+    if (overlap.length === 0) return null;
+    const trend = Math.max(0, s.maxTrend);
+    const score = Math.min(1, 0.6 + Math.min(0.4, trend));
+    const money = s.totalAmount ? `$${Math.round(s.totalAmount / 1_000_000)}M` : 'funded';
+    const trendStr = s.maxTrend ? ` (${s.maxTrend > 0 ? '+' : ''}${Math.round(s.maxTrend * 100)}%)` : '';
+    return {
+      score,
+      reason: `Funded ${overlap.map(categoryLabel).join(', ')} budget: ${money}${trendStr}`,
+      evidenceSpanIds: s.lineIds.flatMap((id) => evidenceByTarget.get(id) ?? []),
+    };
+  };
 
   const signalsByOpp = new Map<string, ScoredSignal[]>();
   const signalsByEntity = new Map<string, ScoredSignal[]>();
@@ -113,6 +150,7 @@ export async function computeMatches(db: AppDatabase, seller: SellerInput): Prom
       signals: oppSignals,
       hasNamedContact: opp.entityId ? entitiesWithContact.has(opp.entityId) : false,
       evidenceSpanIds,
+      budgetFit: budgetFitFor(opp.entityId),
     };
     const outcome = scoreOpportunity(vector, input);
     if (outcome.relevant) {
@@ -160,6 +198,7 @@ export async function computeMatches(db: AppDatabase, seller: SellerInput): Prom
       signals: entSignals,
       hasNamedContact: entitiesWithContact.has(ent.id),
       evidenceSpanIds: evidenceByTarget.get(ent.id) ?? [],
+      budgetFit: budgetFitFor(ent.id),
     };
     const outcome = scoreOpportunity(vector, input);
     if (outcome.relevant) {

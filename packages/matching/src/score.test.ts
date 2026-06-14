@@ -151,6 +151,41 @@ describe('scoreOpportunity — tiers', () => {
   });
 });
 
+describe('scoreOpportunity — budget fit', () => {
+  it('adds a budget_fit factor + reason when the buyer has funded matching budget', () => {
+    const out = scoreOpportunity(
+      telecomSeller,
+      input({ budgetFit: { score: 0.9, reason: 'Funded Telecom budget: $798M (+33%)', evidenceSpanIds: ['b1'] } }),
+    );
+    const bf = out.reasons.find((r) => r.factor === 'budget_fit');
+    expect(bf).toBeDefined();
+    expect(bf!.contribution).toBeGreaterThan(0);
+    expect(bf!.reason).toMatch(/Funded/);
+    expect(bf!.evidenceSpanIds).toEqual(['b1']);
+  });
+
+  it('makes a buyer relevant on budget fit even without category/text overlap', () => {
+    const out = scoreOpportunity(
+      telecomSeller,
+      input({
+        opportunity: {
+          id: 'b2',
+          title: 'Janitorial Services',
+          description: 'cleaning',
+          status: 'unknown',
+          businessUnit: null,
+          solicitationType: null,
+          categoryKeys: ['janitorial_supplies'],
+        },
+        hasNamedContact: false,
+        signals: [],
+        budgetFit: { score: 0.8, reason: 'Funded Telecom budget: $798M', evidenceSpanIds: [] },
+      }),
+    );
+    expect(out.relevant).toBe(true);
+  });
+});
+
 describe('scoreOpportunity — explainability', () => {
   it('every reason carries a contribution and threads opportunity evidence span ids', () => {
     const out = scoreOpportunity(telecomSeller, input());

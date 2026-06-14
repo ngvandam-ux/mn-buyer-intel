@@ -22,6 +22,7 @@ import {
 import {
   type NormalizeContext,
   ensureCategories,
+  processBudget,
   processContact,
   processEntity,
   processOffice,
@@ -61,7 +62,14 @@ async function findOrInsertSourceDocument(db: AppDatabase, doc: RawDocument): Pr
 }
 
 // Process extractions in dependency order so name references resolve.
-const KIND_ORDER: Array<Extraction['kind']> = ['entity', 'office', 'contact', 'opportunity', 'signal'];
+const KIND_ORDER: Array<Extraction['kind']> = [
+  'entity',
+  'office',
+  'contact',
+  'opportunity',
+  'signal',
+  'budget',
+];
 
 async function processExtraction(ctx: NormalizeContext, ex: Extraction): Promise<void> {
   switch (ex.kind) {
@@ -75,6 +83,8 @@ async function processExtraction(ctx: NormalizeContext, ex: Extraction): Promise
       return processOpportunity(ctx, ex);
     case 'signal':
       return processSignal(ctx, ex);
+    case 'budget':
+      return processBudget(ctx, ex);
   }
 }
 

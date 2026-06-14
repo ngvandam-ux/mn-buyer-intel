@@ -100,18 +100,19 @@ export type RefreshJobStatus = (typeof REFRESH_JOB_STATUSES)[number];
 export const SCORE_FACTORS = [
   'category',
   'opportunity_text',
+  'signal_type',
+  'budget_fit',
   'office_name',
   'priority_language',
   'contact_presence',
   'geography',
-  'signal_type',
 ] as const;
 
 export type ScoreFactorKey = (typeof SCORE_FACTORS)[number];
 
 export type MatchTier = 'high' | 'medium' | 'low';
 
-export type ExtractionKind = 'entity' | 'office' | 'contact' | 'opportunity' | 'signal';
+export type ExtractionKind = 'entity' | 'office' | 'contact' | 'opportunity' | 'signal' | 'budget';
 
 // ---------------------------------------------------------------------------
 // Type guards / helpers.
