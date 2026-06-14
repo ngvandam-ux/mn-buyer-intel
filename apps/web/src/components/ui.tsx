@@ -35,6 +35,26 @@ export function relativeDue(value: string | null | undefined): string {
   return `in ${days}d`;
 }
 
+export function fmtMoney(n: number | null | undefined): string {
+  if (n == null) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `$${Math.round(n / 1e6)}M`;
+  if (abs >= 1e3) return `$${Math.round(n / 1e3)}K`;
+  return `$${Math.round(n)}`;
+}
+
+export function fmtPct(d: number | null | undefined): string {
+  if (d == null) return '';
+  return `${d > 0 ? '+' : ''}${Math.round(d * 100)}%`;
+}
+
+export function TrendPill({ delta }: { delta: number | null | undefined }) {
+  if (delta == null) return null;
+  const cls = delta > 0.001 ? 'status-open' : delta < -0.001 ? 'status-closed' : 'soft';
+  return <span className={`pill ${cls}`}>{delta > 0 ? '▲' : delta < 0 ? '▼' : '■'} {fmtPct(delta)}</span>;
+}
+
 export function StatusPill({ status }: { status: string }) {
   return <span className={`pill status-${status}`}>{status}</span>;
 }

@@ -5,6 +5,7 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-d
 import { AuthGate } from './components/AuthGate.tsx';
 import { Layout } from './components/Layout.tsx';
 import './styles.css';
+import { BudgetIntel } from './views/BudgetIntel.tsx';
 import { Contacts } from './views/Contacts.tsx';
 import { Dashboard } from './views/Dashboard.tsx';
 import { Entities } from './views/Entities.tsx';
@@ -33,6 +34,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/opportunities/:id" element={<OpportunityDetail />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/signals" element={<Signals />} />
+            <Route path="/budget" element={<BudgetIntel />} />
             <Route path="/matching" element={<SellerMatching />} />
             <Route path="/sources" element={<SourceHealth />} />
             <Route path="*" element={<Navigate to="/" replace />} />

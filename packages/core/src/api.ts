@@ -5,6 +5,7 @@
  */
 
 import type {
+  BudgetLine,
   Category,
   Contact,
   Entity,
@@ -81,7 +82,27 @@ export interface EntityDetail {
   contacts: Contact[];
   opportunities: OpportunityListItem[];
   signals: Signal[];
+  budgetLines: BudgetLine[];
   evidence: EvidenceRef[];
+}
+
+export interface BudgetLineView extends BudgetLine {
+  entityName: string | null;
+  entityType: EntityType | null;
+}
+
+export interface BudgetIntelDTO {
+  totalBudget: number;
+  lines: BudgetLineView[];
+  totalsByCategory: Array<{ key: string; label: string; total: number; count: number }>;
+  byEntity: Array<{
+    entityId: string;
+    entityName: string;
+    entityType: EntityType;
+    total: number;
+    trendDelta: number | null;
+    categoryKeys: string[];
+  }>;
 }
 
 export interface OpportunityDetail {
@@ -131,4 +152,4 @@ export interface DashboardDTO {
   lastRefresh: string | null;
 }
 
-export type { Category, Contact, Entity, Office, Opportunity, RefreshJob, SellerProfile, Signal };
+export type { BudgetLine, Category, Contact, Entity, Office, Opportunity, RefreshJob, SellerProfile, Signal };

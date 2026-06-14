@@ -10,6 +10,7 @@ import { previewMatches, runMatching } from '@mn/matching';
 import type { SellerInput } from '@mn/matching';
 import {
   decorateMatches,
+  getBudgetIntel,
   getDashboard,
   getEntityDetail,
   getOpportunityDetail,
@@ -99,6 +100,7 @@ export function registerRoutes(app: FastifyInstance, db: AppDatabase): void {
     return listSignals(db, { type: q.type, entityId: q.entityId, q: q.q });
   });
   app.get('/api/categories', async () => listCategories(db));
+  app.get('/api/budget', async () => getBudgetIntel(db));
 
   // --- evidence + source documents (audit) ---
   app.get('/api/evidence/:targetId', async (req) => {

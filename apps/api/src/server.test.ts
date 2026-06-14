@@ -12,7 +12,7 @@ process.env.DATABASE_URL = '';
 process.env.PGLITE_DATA = DATA_DIR;
 process.env.LOG_LEVEL = 'silent';
 
-import { sourcewellConnector, supplierPortalConnector } from '@mn/connectors';
+import { mmbBudgetConnector, sourcewellConnector, supplierPortalConnector } from '@mn/connectors';
 import { type DbHandle, createDb, runMigrations } from '@mn/db';
 import { ingestFromFixture } from '@mn/ingest';
 import type { FastifyInstance } from 'fastify';
@@ -27,6 +27,7 @@ beforeAll(async () => {
   handle = await createDb();
   await ingestFromFixture(handle.db, supplierPortalConnector);
   await ingestFromFixture(handle.db, sourcewellConnector);
+  await ingestFromFixture(handle.db, mmbBudgetConnector);
   app = await buildServer(handle.db);
   await app.ready();
 }, 60_000);
@@ -67,6 +68,14 @@ describe('API', () => {
     expect(Array.isArray(detail.evidence)).toBe(true);
     expect(detail.evidence.length).toBeGreaterThan(0);
     expect(detail.evidence[0].sourceUrl).toMatch(/^https?:\/\//);
+  });
+
+  it('GET /api/budget returns budget intel with category + agency rollups', async () => {
+    const b = json(await app.inject({ method: 'GET', url: '/api/budget' }));
+    expect(b.lines.length).toBeGreaterThanOrEqual(1);
+    expect(b.totalBudget).toBeGreaterThan(0);
+    expect(b.byEntity.length).toBeGreaterThanOrEqual(1);
+    expect(b.totalsByCategory.some((c: { key: string }) => c.key === 'software')).toBe(true);
   });
 
   it('POST /api/match/preview returns explainable, ranked matches', async () => {

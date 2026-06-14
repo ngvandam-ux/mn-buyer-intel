@@ -3,6 +3,8 @@
  */
 
 import type {
+  BudgetIntelDTO,
+  BudgetLineView,
   ContactListItem,
   DashboardDTO,
   EntityDetail,
@@ -20,6 +22,7 @@ import { CONNECTORS } from '@mn/connectors';
 import {
   type AppDatabase,
   and,
+  budgetLines,
   categories,
   contacts,
   count,
@@ -224,15 +227,23 @@ export async function listEntities(db: AppDatabase, f: EntityFilters = {}): Prom
 export async function getEntityDetail(db: AppDatabase, id: string): Promise<EntityDetail | null> {
   const [entity] = await db.select().from(entities).where(eq(entities.id, id)).limit(1);
   if (!entity) return null;
-  const [offs, cons, opps, sigs] = await Promise.all([
+  const [offs, cons, opps, sigs, budgets] = await Promise.all([
     db.select().from(offices).where(eq(offices.entityId, id)),
     db.select().from(contacts).where(eq(contacts.entityId, id)),
     listOpportunities(db, { entityId: id }),
     db.select().from(signals).where(eq(signals.entityId, id)).orderBy(desc(signals.strength)),
+    db.select().from(budgetLines).where(eq(budgetLines.entityId, id)).orderBy(desc(budgetLines.amount)),
   ]);
-  const targetIds = [id, ...offs.map((o) => o.id), ...cons.map((c) => c.id), ...opps.map((o) => o.id), ...sigs.map((s) => s.id)];
+  const targetIds = [
+    id,
+    ...offs.map((o) => o.id),
+    ...cons.map((c) => c.id),
+    ...opps.map((o) => o.id),
+    ...sigs.map((s) => s.id),
+    ...budgets.map((b) => b.id),
+  ];
   const evidence = await resolveEvidence(db, targetIds);
-  return { entity, offices: offs, contacts: cons, opportunities: opps, signals: sigs, evidence };
+  return { entity, offices: offs, contacts: cons, opportunities: opps, signals: sigs, budgetLines: budgets, evidence };
 }
 
 // ---------------------------------------------------------------------------
@@ -396,6 +407,76 @@ export async function getDashboard(db: AppDatabase): Promise<DashboardDTO> {
     recentOpportunities,
     sourceHealth,
     lastRefresh: lastJob?.finishedAt ?? null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Budget intel
+// ---------------------------------------------------------------------------
+
+export async function getBudgetIntel(db: AppDatabase): Promise<BudgetIntelDTO> {
+  const rows = await db
+    .select({ line: budgetLines, entityName: entities.name, entityType: entities.entityType })
+    .from(budgetLines)
+    .leftJoin(entities, eq(budgetLines.entityId, entities.id))
+    .orderBy(desc(budgetLines.amount));
+
+  const lines: BudgetLineView[] = rows.map((r) => ({
+    ...r.line,
+    entityName: r.entityName,
+    entityType: r.entityType,
+  }));
+
+  const catTotals = new Map<string, { total: number; count: number }>();
+  let totalBudget = 0;
+  const byEntityMap = new Map<
+    string,
+    { entityId: string; entityName: string; entityType: string; total: number; trendDelta: number | null; cats: Set<string> }
+  >();
+
+  for (const l of lines) {
+    const amt = l.amount ?? 0;
+    totalBudget += amt;
+    for (const k of l.categoryKeys) {
+      const c = catTotals.get(k) ?? { total: 0, count: 0 };
+      c.total += amt;
+      c.count += 1;
+      catTotals.set(k, c);
+    }
+    if (l.entityId) {
+      const e =
+        byEntityMap.get(l.entityId) ??
+        {
+          entityId: l.entityId,
+          entityName: l.entityName ?? 'Unknown',
+          entityType: l.entityType ?? 'state_agency',
+          total: 0,
+          trendDelta: null as number | null,
+          cats: new Set<string>(),
+        };
+      e.total += amt;
+      if (l.trendDelta != null && (e.trendDelta == null || l.trendDelta > e.trendDelta)) e.trendDelta = l.trendDelta;
+      for (const k of l.categoryKeys) e.cats.add(k);
+      byEntityMap.set(l.entityId, e);
+    }
+  }
+
+  return {
+    totalBudget,
+    lines,
+    totalsByCategory: [...catTotals.entries()]
+      .map(([key, v]) => ({ key, label: categoryLabel(key), total: v.total, count: v.count }))
+      .sort((a, b) => b.total - a.total),
+    byEntity: [...byEntityMap.values()]
+      .map((e) => ({
+        entityId: e.entityId,
+        entityName: e.entityName,
+        entityType: e.entityType as BudgetIntelDTO['byEntity'][number]['entityType'],
+        total: e.total,
+        trendDelta: e.trendDelta,
+        categoryKeys: [...e.cats],
+      }))
+      .sort((a, b) => b.total - a.total),
   };
 }
 

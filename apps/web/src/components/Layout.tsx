@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { to: '/opportunities', label: 'Opportunities', icon: I('M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12h6M9 16h6') },
   { to: '/contacts', label: 'Contacts', icon: I('M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75') },
   { to: '/signals', label: 'Signals', icon: I('M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M5 19a1 1 0 1 0 0 .01') },
+  { to: '/budget', label: 'Budget Intel', icon: I('M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6') },
   { to: '/matching', label: 'Seller Matching', icon: I('M12 2l2.5 6.5L21 9l-5 4 1.5 7L12 16.5 6.5 20 8 13 3 9l6.5-.5z') },
 ];
 
@@ -33,6 +34,7 @@ const TITLES: Record<string, string> = {
   '/opportunities': 'Opportunities',
   '/contacts': 'Contacts',
   '/signals': 'Buying Signals',
+  '/budget': 'Budget Intel',
   '/matching': 'Seller Profile & Matching',
   '/sources': 'Source Health & Refresh Logs',
 };

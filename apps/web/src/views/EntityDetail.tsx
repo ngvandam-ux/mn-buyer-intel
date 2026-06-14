@@ -10,8 +10,10 @@ import {
   Loading,
   Stat,
   StatusPill,
+  TrendPill,
   entityTypeLabel,
   fmtDate,
+  fmtMoney,
   signalTypeLabel,
 } from '../components/ui.tsx';
 
@@ -24,7 +26,7 @@ export function EntityDetail() {
   if (error) return <ErrorState error={error} />;
   if (!data) return null;
 
-  const { entity, offices, contacts, opportunities, signals, evidence } = data;
+  const { entity, offices, contacts, opportunities, signals, budgetLines, evidence } = data;
 
   return (
     <div className="stack">
@@ -107,6 +109,30 @@ export function EntityDetail() {
           </div>
         </Card>
       </div>
+
+      {budgetLines.length > 0 && (
+        <Card title={`Budget intel (${budgetLines.length})`}>
+          <table className="table">
+            <thead>
+              <tr><th>Program</th><th>Period</th><th className="num">Amount</th><th>Trend</th><th>Categories</th></tr>
+            </thead>
+            <tbody>
+              {budgetLines.map((b) => (
+                <tr key={b.id}>
+                  <td>
+                    <span className="t-title">{b.program}</span>
+                    {b.narrative && <div className="t-sub">{b.narrative.slice(0, 120)}…</div>}
+                  </td>
+                  <td>{b.fiscalPeriod ?? '—'}</td>
+                  <td className="num"><strong>{fmtMoney(b.amount)}</strong></td>
+                  <td><TrendPill delta={b.trendDelta} /></td>
+                  <td><Chips items={b.categoryKeys.slice(0, 6)} kind="category" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
 
       {offices.length > 0 && (
         <Card title={`Procurement offices (${offices.length})`}>
