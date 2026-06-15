@@ -8,6 +8,7 @@
 import type { Extraction, SourceConnector } from '@mn/core';
 import { describe, expect, it } from 'vitest';
 import { fixtureAsRawDocument, fixtureDocsForConnector } from '../runtime/fixtures.js';
+import { incumbentsConnector } from './incumbents.js';
 import { metroCountiesConnector } from './metro-counties.js';
 import { orgChartsConnector } from './org-charts.js';
 import { minnstateConnector } from './minnstate.js';
@@ -165,6 +166,18 @@ describe('org-charts parser', () => {
     expect(names).toContain('Jon Eichten');
     expect(contacts.every((c) => (c.fields as { title: string }).title.length > 0)).toBe(true);
     expect(byKind(ex, 'entity').some((e) => (e.fields as { name: string }).name === 'Minnesota IT Services')).toBe(true);
+  });
+});
+
+describe('incumbents parser', () => {
+  it('extracts awarded vendors (incumbents) per Sourcewell contract', () => {
+    const docs = fixtureDocsForConnector('mn-incumbents', incumbentsConnector.meta.url);
+    expect(docs.length).toBeGreaterThanOrEqual(1);
+    const all = docs.flatMap((d) => incumbentsConnector.parse(d) as Extraction[]);
+    const awards = byKind(all, 'signal').filter((s) => (s.fields as { signalType: string }).signalType === 'award_history');
+    expect(awards.length).toBeGreaterThanOrEqual(1);
+    expect(awards.some((s) => /Caterpillar|BOMAG|Alamo|Henderson/.test((s.fields as { detail: string }).detail))).toBe(true);
+    expect((awards[0]!.fields as { title: string }).title).toMatch(/^Incumbents —/);
   });
 });
 

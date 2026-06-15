@@ -96,6 +96,7 @@ const PRIORITY_SIGNALS = new Set<SignalType>([
   'budget_priority',
   'policy_priority',
   'strategic_initiative',
+  'award_history',
 ]);
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -211,7 +212,10 @@ export function scoreOpportunity(
     reasons.push({
       factor: 'priority_language',
       contribution: round1(weights.priority_language),
-      reason: `Aligns with a published priority: ${priorityHit.title}`,
+      reason:
+        priorityHit.signalType === 'award_history'
+          ? `Incumbents in your space — ${priorityHit.title.replace(/^Incumbents — /, '')}`
+          : `Aligns with a published priority: ${priorityHit.title}`,
       evidenceSpanIds,
     });
   }
