@@ -75,8 +75,9 @@ export const api = {
     get<EntityListItem[]>(`/api/entities${qs(f)}`),
   entity: (id: string) => get<EntityDetail>(`/api/entities/${id}`),
 
-  opportunities: (f: { status?: string; category?: string; q?: string; entityType?: string; source?: string } = {}) =>
-    get<OpportunityListItem[]>(`/api/opportunities${qs(f)}`),
+  opportunities: (
+    f: { status?: string; category?: string; q?: string; entityType?: string; source?: string; lens?: string } = {},
+  ) => get<OpportunityListItem[]>(`/api/opportunities${qs(f)}`),
   opportunity: (id: string) => get<OpportunityDetail>(`/api/opportunities/${id}`),
 
   contacts: (f: { q?: string; entityId?: string } = {}) => get<ContactListItem[]>(`/api/contacts${qs(f)}`),
@@ -94,8 +95,8 @@ export const api = {
   createSeller: (body: SellerInputBody) => send<SellerProfile>('POST', '/api/seller-profiles', body),
   updateSeller: (id: string, body: SellerInputBody) => send<SellerProfile>('PUT', `/api/seller-profiles/${id}`, body),
   deleteSeller: (id: string) => send<{ ok: boolean }>('DELETE', `/api/seller-profiles/${id}`),
-  sellerMatches: (id: string) => get<MatchResults>(`/api/seller-profiles/${id}/matches`),
-  previewMatches: (body: SellerInputBody) => send<MatchResults>('POST', '/api/match/preview', body),
+  sellerMatches: (id: string, lens?: string) => get<MatchResults>(`/api/seller-profiles/${id}/matches${qs({ lens })}`),
+  previewMatches: (body: SellerInputBody & { lens?: string }) => send<MatchResults>('POST', '/api/match/preview', body),
 
   evidence: (targetId: string) => get<EvidenceRef[]>(`/api/evidence/${targetId}`),
 };

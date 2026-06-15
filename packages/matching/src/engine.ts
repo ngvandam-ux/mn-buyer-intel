@@ -8,7 +8,7 @@
  */
 
 import type { MatchReason, MatchTier, MatchTargetType, OpportunityStatus, SignalType } from '@mn/core';
-import { categoryLabel, detectCategories } from '@mn/core';
+import { DEFAULT_FOCUS, categoryLabel, detectCategories, lensWeightForCategories } from '@mn/core';
 import {
   type AppDatabase,
   budgetLines,
@@ -48,8 +48,15 @@ export interface ComputedMatches {
 const TIER_RANK: Record<MatchTier, number> = { high: 3, medium: 2, low: 1 };
 
 /** Load the buyer universe, score against the seller, return matches (no DB writes). */
-export async function computeMatches(db: AppDatabase, seller: SellerInput): Promise<ComputedMatches> {
+export async function computeMatches(
+  db: AppDatabase,
+  seller: SellerInput,
+  lens: string = DEFAULT_FOCUS,
+): Promise<ComputedMatches> {
   const vector = buildSellerVector(seller);
+  // Focus lens re-ranks by category — boosts tech/products, demotes construction/services.
+  const lensAdjust = (rawScore: number, categoryKeys: string[]): number =>
+    Math.min(100, Math.max(0, Math.round(rawScore * lensWeightForCategories(lens, categoryKeys))));
 
   const [oppRows, entRows, sigRows, contactRows, evRows, budgetRows] = await Promise.all([
     db.select().from(opportunities),
@@ -158,7 +165,7 @@ export async function computeMatches(db: AppDatabase, seller: SellerInput): Prom
         targetType: 'opportunity',
         targetId: opp.id,
         entityId: opp.entityId,
-        score: outcome.score,
+        score: lensAdjust(outcome.score, opp.categoryKeys),
         tier: outcome.tier,
         reasons: outcome.reasons,
       });
@@ -202,7 +209,14 @@ export async function computeMatches(db: AppDatabase, seller: SellerInput): Prom
     };
     const outcome = scoreOpportunity(vector, input);
     if (outcome.relevant) {
-      consider({ targetType: 'entity', targetId: ent.id, entityId: ent.id, score: outcome.score, tier: outcome.tier, reasons: outcome.reasons });
+      consider({
+        targetType: 'entity',
+        targetId: ent.id,
+        entityId: ent.id,
+        score: lensAdjust(outcome.score, input.opportunity.categoryKeys),
+        tier: outcome.tier,
+        reasons: outcome.reasons,
+      });
     }
   }
 
@@ -212,12 +226,20 @@ export async function computeMatches(db: AppDatabase, seller: SellerInput): Prom
 }
 
 /** Score the DB against an ad-hoc seller profile without saving anything. */
-export async function previewMatches(db: AppDatabase, seller: SellerInput): Promise<ComputedMatches> {
-  return computeMatches(db, seller);
+export async function previewMatches(
+  db: AppDatabase,
+  seller: SellerInput,
+  lens: string = DEFAULT_FOCUS,
+): Promise<ComputedMatches> {
+  return computeMatches(db, seller, lens);
 }
 
 /** Compute and persist matches for a saved seller profile. Returns the count written. */
-export async function runMatching(db: AppDatabase, sellerProfileId: string): Promise<ComputedMatches> {
+export async function runMatching(
+  db: AppDatabase,
+  sellerProfileId: string,
+  lens: string = DEFAULT_FOCUS,
+): Promise<ComputedMatches> {
   const [profile] = await db.select().from(sellerProfiles).where(eq(sellerProfiles.id, sellerProfileId)).limit(1);
   if (!profile) throw new Error(`seller profile ${sellerProfileId} not found`);
 
@@ -231,7 +253,7 @@ export async function runMatching(db: AppDatabase, sellerProfileId: string): Pro
     categories: profile.categories,
     geographies: profile.geographies,
   };
-  const result = await computeMatches(db, seller);
+  const result = await computeMatches(db, seller, lens);
 
   await db.delete(matches).where(eq(matches.sellerProfileId, sellerProfileId));
   const rows = [...result.opportunityMatches, ...result.entityMatches].map((m) => ({

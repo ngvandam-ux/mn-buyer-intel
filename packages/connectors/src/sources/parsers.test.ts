@@ -8,6 +8,7 @@
 import type { Extraction, SourceConnector } from '@mn/core';
 import { describe, expect, it } from 'vitest';
 import { fixtureAsRawDocument } from '../runtime/fixtures.js';
+import { metroCountiesConnector } from './metro-counties.js';
 import { minnstateConnector } from './minnstate.js';
 import { mmbBudgetConnector } from './mmb-budget.js';
 import { ospContactsConnector } from './osp-contacts.js';
@@ -130,6 +131,23 @@ describe('mmb-budget parser', () => {
     expect(signalTypes).toContain('budget_priority');
     expect(signalTypes).toContain('strategic_initiative');
     expect(byKind(ex, 'entity').length).toBe(1);
+  });
+});
+
+describe('metro-counties parser', () => {
+  it('emits all 7 metro county buyers (with coords) + a pathway signal', async () => {
+    const raw = fixtureAsRawDocument('mn-metro-counties', metroCountiesConnector.meta.url);
+    if (!raw) throw new Error('missing mn-metro-counties fixture');
+    const ex = await Promise.resolve(metroCountiesConnector.parse(raw));
+    const ents = byKind(ex, 'entity');
+    expect(ents.length).toBe(7);
+    expect(ents.every((e) => (e.fields as { entityType: string }).entityType === 'county')).toBe(true);
+    expect(ents.every((e) => (e.fields as { metro: boolean }).metro === true)).toBe(true);
+    expect(ents.every((e) => typeof (e.fields as { lat: number }).lat === 'number')).toBe(true);
+    const names = ents.map((e) => (e.fields as { name: string }).name);
+    expect(names).toContain('Hennepin County');
+    expect(names).toContain('Ramsey County');
+    expect(byKind(ex, 'signal').some((s) => (s.fields as { signalType: string }).signalType === 'cooperative_pathway')).toBe(true);
   });
 });
 

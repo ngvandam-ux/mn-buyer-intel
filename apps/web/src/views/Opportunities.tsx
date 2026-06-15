@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.ts';
+import { useFocus } from '../focus.ts';
 import {
   Card,
   Chips,
@@ -26,8 +27,9 @@ export function Opportunities() {
   const sources = useQuery({ queryKey: ['sources'], queryFn: api.sources });
   const [source, setSource] = useState('');
 
+  const [focus] = useFocus();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['opportunities', status, category, entityType, source, q],
+    queryKey: ['opportunities', status, category, entityType, source, q, focus],
     queryFn: () =>
       api.opportunities({
         status: status || undefined,
@@ -35,6 +37,7 @@ export function Opportunities() {
         entityType: entityType || undefined,
         source: source || undefined,
         q: q || undefined,
+        lens: focus,
       }),
   });
 

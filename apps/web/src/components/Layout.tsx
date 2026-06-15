@@ -1,5 +1,32 @@
 import type { ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useFocus } from '../focus.ts';
+
+function FocusToggle() {
+  const [focus, set] = useFocus();
+  const tech = focus !== 'none';
+  return (
+    <div title="Tilt ranking toward products & technology" className="inline" style={{ gap: 8 }}>
+      <span className="t-sub" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Focus</span>
+      <div style={{ display: 'inline-flex', border: '1px solid var(--line-strong)', borderRadius: 8, overflow: 'hidden' }}>
+        <button
+          className="btn sm"
+          style={{ border: 'none', borderRadius: 0, background: tech ? 'var(--brand)' : 'var(--surface)', color: tech ? '#fff' : 'var(--ink)' }}
+          onClick={() => set('products_tech')}
+        >
+          Products & Tech
+        </button>
+        <button
+          className="btn sm"
+          style={{ border: 'none', borderRadius: 0, background: !tech ? 'var(--brand)' : 'var(--surface)', color: !tech ? '#fff' : 'var(--ink)' }}
+          onClick={() => set('none')}
+        >
+          Neutral
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface NavItem {
   to: string;
@@ -79,6 +106,7 @@ export function Layout() {
             <div className="title">{title}</div>
             <div className="crumb">State of Minnesota · agencies · cities · counties · public safety · higher ed · cooperatives</div>
           </div>
+          <FocusToggle />
         </header>
         <main className="content">
           <Outlet />

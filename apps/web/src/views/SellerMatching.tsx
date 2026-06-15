@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { type SellerInputBody, api } from '../api.ts';
+import { useFocus } from '../focus.ts';
 import {
   Card,
   EmptyState,
@@ -62,6 +63,7 @@ export function SellerMatching() {
   const [tab, setTab] = useState<'opportunities' | 'buyers'>('opportunities');
   const [loadError, setLoadError] = useState<string | null>(null);
   const latestReq = useRef<string | null>(null);
+  const [focus] = useFocus();
 
   // Auto-select the first saved profile once loaded.
   useEffect(() => {
@@ -70,6 +72,12 @@ export function SellerMatching() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles.data]);
+
+  // Re-rank the open profile's matches when the focus lens changes.
+  useEffect(() => {
+    if (selectedId) void selectProfile(selectedId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus]);
 
   async function selectProfile(id: string) {
     setSelectedId(id);
@@ -88,7 +96,7 @@ export function SellerMatching() {
         geographies: toStr(p.geographies),
         categories: p.categories ?? [],
       });
-      const m = await api.sellerMatches(id);
+      const m = await api.sellerMatches(id, focus);
       if (latestReq.current !== id) return;
       setResults(m);
     } catch (err) {
@@ -105,7 +113,7 @@ export function SellerMatching() {
   }
 
   const preview = useMutation({
-    mutationFn: () => api.previewMatches(formToBody(form)),
+    mutationFn: () => api.previewMatches({ ...formToBody(form), lens: focus }),
     onSuccess: (r) => setResults(r),
   });
 
@@ -113,7 +121,7 @@ export function SellerMatching() {
     mutationFn: async () => {
       const body = formToBody(form);
       const saved = selectedId ? await api.updateSeller(selectedId, body) : await api.createSeller(body);
-      const m = await api.sellerMatches(saved.id);
+      const m = await api.sellerMatches(saved.id, focus);
       return { saved, m };
     },
     onSuccess: ({ saved, m }) => {

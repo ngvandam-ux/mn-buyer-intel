@@ -23,6 +23,9 @@ export interface EntityFields {
   jurisdiction?: string;
   county?: string | null;
   city?: string | null;
+  metro?: boolean;
+  lat?: number | null;
+  lng?: number | null;
   website?: string | null;
 }
 

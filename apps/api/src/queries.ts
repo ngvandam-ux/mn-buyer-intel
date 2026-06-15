@@ -17,7 +17,7 @@ import type {
   SignalListItem,
   SourceHealth,
 } from '@mn/core';
-import { CATEGORY_TAXONOMY, categoryLabel } from '@mn/core';
+import { CATEGORY_TAXONOMY, DEFAULT_FOCUS, categoryLabel, lensWeightForCategories } from '@mn/core';
 import { CONNECTORS } from '@mn/connectors';
 import {
   type AppDatabase,
@@ -111,6 +111,8 @@ export interface OpportunityFilters {
   entityId?: string;
   minConfidence?: number;
   limit?: number;
+  /** Focus lens to rank by (default products_tech). */
+  lens?: string;
 }
 
 export async function listOpportunities(
@@ -130,11 +132,17 @@ export async function listOpportunities(
   const withSource = f.source
     ? base.leftJoin(sourceDocuments, eq(opportunities.sourceDocumentId, sourceDocuments.id))
     : base;
-  const rows = await withSource
+  const rows = (await withSource
     .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(opportunities.dueDate))
-    .limit(f.limit ?? 500);
-  return rows as OpportunityListItem[];
+    .limit(f.limit ?? 500)) as OpportunityListItem[];
+
+  // Re-rank by the focus lens (tech/products first), stable within equal weight by due date.
+  const lens = f.lens ?? DEFAULT_FOCUS;
+  if (lens !== 'none') {
+    rows.sort((a, b) => lensWeightForCategories(lens, b.categoryKeys) - lensWeightForCategories(lens, a.categoryKeys));
+  }
+  return rows;
 }
 
 export async function getOpportunityDetail(

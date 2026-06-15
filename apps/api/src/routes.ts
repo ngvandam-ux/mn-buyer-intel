@@ -4,9 +4,10 @@
 
 import type { FastifyInstance } from 'fastify';
 import { createFetchContext, getConnector } from '@mn/connectors';
-import { type AppDatabase, eq, matches, sellerProfiles, sourceDocuments } from '@mn/db';
+import { type AppDatabase, eq, sellerProfiles, sourceDocuments } from '@mn/db';
+import { DEFAULT_FOCUS } from '@mn/core';
 import { ingestConnector } from '@mn/ingest';
-import { previewMatches, runMatching } from '@mn/matching';
+import { computeMatches, previewMatches, runMatching } from '@mn/matching';
 import type { SellerInput } from '@mn/matching';
 import {
   decorateMatches,
@@ -80,6 +81,7 @@ export function registerRoutes(app: FastifyInstance, db: AppDatabase): void {
       q: q.q,
       source: q.source,
       entityType: q.entityType,
+      lens: q.lens,
       minConfidence: q.minConfidence !== undefined ? clampNum(q.minConfidence, 0, 0, 1) : undefined,
     });
   });
@@ -200,40 +202,43 @@ export function registerRoutes(app: FastifyInstance, db: AppDatabase): void {
   });
   app.get('/api/seller-profiles/:id/matches', async (req, reply) => {
     const { id } = req.params as { id: string };
+    const q = req.query as Record<string, string>;
     const [profile] = await db.select().from(sellerProfiles).where(eq(sellerProfiles.id, id)).limit(1);
     if (!profile) return reply.code(404).send({ error: 'seller profile not found' });
-    const rows = await db.select().from(matches).where(eq(matches.sellerProfileId, id));
-    let raw = rows.map((r) => ({
-      id: r.id,
-      targetType: r.targetType,
-      targetId: r.targetId,
-      entityId: r.entityId,
-      score: r.score,
-      tier: r.tier,
-      reasons: r.reasons,
+    // Recompute with the requested lens so the focus toggle is live + always fresh.
+    const computed = await computeMatches(
+      db,
+      {
+        companyName: profile.companyName,
+        capabilities: profile.capabilities,
+        services: profile.services,
+        products: profile.products,
+        keywords: profile.keywords,
+        certifications: profile.certifications,
+        categories: profile.categories,
+        geographies: profile.geographies,
+      },
+      q.lens ?? DEFAULT_FOCUS,
+    );
+    const raw = [...computed.opportunityMatches, ...computed.entityMatches].map((m) => ({
+      id: null,
+      targetType: m.targetType,
+      targetId: m.targetId,
+      entityId: m.entityId,
+      score: m.score,
+      tier: m.tier,
+      reasons: m.reasons,
     }));
-    if (raw.length === 0) {
-      // compute + persist on demand if not yet materialized
-      await runMatching(db, id);
-      const fresh = await db.select().from(matches).where(eq(matches.sellerProfileId, id));
-      raw = fresh.map((r) => ({
-        id: r.id,
-        targetType: r.targetType,
-        targetId: r.targetId,
-        entityId: r.entityId,
-        score: r.score,
-        tier: r.tier,
-        reasons: r.reasons,
-      }));
-    }
     return decorateMatches(db, raw, id);
   });
 
   // --- ad-hoc match preview (no save) ---
   app.post('/api/match/preview', async (req, reply) => {
-    const input = sellerInputFromBody(req.body as Record<string, unknown>);
+    const body = req.body as Record<string, unknown>;
+    const input = sellerInputFromBody(body);
     if (!input.companyName) input.companyName = 'Preview';
-    const computed = await previewMatches(db, input);
+    const lens = typeof body.lens === 'string' ? body.lens : DEFAULT_FOCUS;
+    const computed = await previewMatches(db, input, lens);
     const raw = [...computed.opportunityMatches, ...computed.entityMatches].map((m) => ({
       id: null,
       targetType: m.targetType,
