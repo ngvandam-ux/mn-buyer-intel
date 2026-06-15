@@ -9,6 +9,7 @@ import type { Extraction, SourceConnector } from '@mn/core';
 import { describe, expect, it } from 'vitest';
 import { fixtureAsRawDocument } from '../runtime/fixtures.js';
 import { metroCountiesConnector } from './metro-counties.js';
+import { orgChartsConnector } from './org-charts.js';
 import { minnstateConnector } from './minnstate.js';
 import { mmbBudgetConnector } from './mmb-budget.js';
 import { ospContactsConnector } from './osp-contacts.js';
@@ -148,6 +149,20 @@ describe('metro-counties parser', () => {
     expect(names).toContain('Hennepin County');
     expect(names).toContain('Ramsey County');
     expect(byKind(ex, 'signal').some((s) => (s.fields as { signalType: string }).signalType === 'cooperative_pathway')).toBe(true);
+  });
+});
+
+describe('org-charts parser', () => {
+  it('extracts named MNIT decision-makers present on the leadership page', async () => {
+    const raw = fixtureAsRawDocument('mn-org-charts', orgChartsConnector.meta.url);
+    if (!raw) throw new Error('missing mn-org-charts fixture');
+    const ex = await Promise.resolve(orgChartsConnector.parse(raw));
+    const contacts = byKind(ex, 'contact');
+    expect(contacts.length).toBeGreaterThanOrEqual(3);
+    const names = contacts.map((c) => (c.fields as { name: string }).name);
+    expect(names).toContain('Jon Eichten');
+    expect(contacts.every((c) => (c.fields as { title: string }).title.length > 0)).toBe(true);
+    expect(byKind(ex, 'entity').some((e) => (e.fields as { name: string }).name === 'Minnesota IT Services')).toBe(true);
   });
 });
 

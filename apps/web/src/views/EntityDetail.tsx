@@ -11,6 +11,7 @@ import {
   Stat,
   StatusPill,
   TrendPill,
+  categoryLabel,
   entityTypeLabel,
   fmtDate,
   fmtMoney,
@@ -91,20 +92,31 @@ export function EntityDetail() {
           </div>
         </Card>
 
-        <Card title={`Contacts (${contacts.length})`}>
+        <Card title={`Decision-makers & contacts (${contacts.length})`} right={<span className="t-sub">who to call</span>}>
           <div className="card-body stack">
             {contacts.length === 0 ? (
               <EmptyState>No named contacts.</EmptyState>
             ) : (
-              contacts.map((c) => (
-                <div key={c.id}>
-                  <div className="t-title">{c.name}{c.title ? <span className="t-sub"> · {c.title}</span> : null}</div>
-                  <div className="t-sub">
-                    {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
-                    {c.phone && <> · {c.phone}</>}
+              [...contacts]
+                .sort((a, b) => (b.titleRank ?? 0) - (a.titleRank ?? 0))
+                .map((c) => (
+                  <div key={c.id} className="row-between" style={{ alignItems: 'flex-start' }}>
+                    <div>
+                      <div className="t-title">
+                        {c.name}
+                        {c.isDecisionMaker && <span className="pill tier-high" style={{ marginLeft: 8 }}>decision-maker</span>}
+                      </div>
+                      {c.title && <div className="t-sub">{c.title}</div>}
+                      <div className="t-sub">
+                        {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
+                        {c.phone && <> · {c.phone}</>}
+                      </div>
+                    </div>
+                    <div className="inline" style={{ alignItems: 'flex-end' }}>
+                      {c.roleCategory && <span className="chip">owns {categoryLabel(c.roleCategory)}</span>}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))
             )}
           </div>
         </Card>

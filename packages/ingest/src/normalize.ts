@@ -7,7 +7,7 @@
  */
 
 import type { EntityType, Extraction, OpportunityStatus, SignalType } from '@mn/core';
-import { SIGNAL_TYPE_STRENGTH, detectCategories } from '@mn/core';
+import { SIGNAL_TYPE_STRENGTH, detectCategories, titleIntel } from '@mn/core';
 import type {
   BudgetFields,
   ContactFields,
@@ -188,12 +188,19 @@ export async function processContact(ctx: NormalizeContext, ex: Extraction): Pro
     .where(and(...conds))
     .limit(1);
 
+  // Infer org-chart fields from the title (connector may override).
+  const intel = titleIntel(f.title, f.entityName);
+  const roleCategory = f.roleCategory ?? intel.roleCategory;
+  const titleRank = f.titleRank ?? intel.titleRank;
+  const isDecisionMaker = f.isDecisionMaker ?? intel.isDecisionMaker;
+  const authorityNote = f.authorityNote ?? null;
+
   let id: string;
   if (found[0]) {
     id = found[0].id;
     await ctx.db
       .update(contacts)
-      .set({ title: f.title ?? null, phone: f.phone ?? null, officeId })
+      .set({ title: f.title ?? null, phone: f.phone ?? null, officeId, roleCategory, titleRank, isDecisionMaker, authorityNote })
       .where(eq(contacts.id, id));
   } else {
     const [row] = await ctx.db
@@ -205,6 +212,10 @@ export async function processContact(ctx: NormalizeContext, ex: Extraction): Pro
         title: f.title ?? null,
         email: f.email ?? null,
         phone: f.phone ?? null,
+        roleCategory,
+        titleRank,
+        isDecisionMaker,
+        authorityNote,
         sourceDocumentId: ctx.sourceDocumentId,
         extractedAt: ctx.at,
         confidence: ex.confidence,

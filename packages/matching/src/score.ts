@@ -81,6 +81,8 @@ export interface OpportunityScoringInput {
   evidenceSpanIds: string[];
   /** Precomputed budget→category fit for this opportunity's buyer (0..1) + a reason. */
   budgetFit?: { score: number; reason: string; evidenceSpanIds?: string[] } | null;
+  /** The best decision-maker to contact at this buyer for the seller's category (v3). */
+  decisionMaker?: { name: string; title: string | null; roleCategory: string | null } | null;
 }
 
 export interface ScoreOutcome {
@@ -225,12 +227,16 @@ export function scoreOpportunity(
     });
   }
 
-  // --- contact presence ---
+  // --- contact presence / decision-maker ("who to call") ---
   if (hasNamedContact) {
+    const dm = input.decisionMaker;
+    const reason = dm
+      ? `Decision-maker — ${dm.name}${dm.title ? `, ${dm.title}` : ''}${dm.roleCategory ? ` (owns ${categoryLabel(dm.roleCategory)})` : ''}`
+      : 'A named procurement contact is available for this buyer';
     reasons.push({
       factor: 'contact_presence',
       contribution: round1(weights.contact_presence),
-      reason: 'A named procurement contact is available for this buyer',
+      reason,
       evidenceSpanIds: [],
     });
   }

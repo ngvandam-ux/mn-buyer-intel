@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.ts';
-import { Card, EmptyState, ErrorState, Loading } from '../components/ui.tsx';
+import { Card, EmptyState, ErrorState, Loading, categoryLabel } from '../components/ui.tsx';
 
 export function Contacts() {
   const [q, setQ] = useState('');
@@ -29,15 +29,18 @@ export function Contacts() {
         ) : (
           <table className="table">
             <thead>
-              <tr><th>Name</th><th>Title</th><th>Email</th><th>Phone</th><th>Buyer / Office</th></tr>
+              <tr><th>Name</th><th>Title</th><th>Role</th><th>Email</th><th>Buyer / Office</th></tr>
             </thead>
             <tbody>
               {data.map((c) => (
                 <tr key={c.id}>
-                  <td><span className="t-title">{c.name}</span></td>
+                  <td>
+                    <span className="t-title">{c.name}</span>
+                    {c.isDecisionMaker && <span className="pill tier-high" style={{ marginLeft: 6 }}>DM</span>}
+                  </td>
                   <td>{c.title ?? '—'}</td>
+                  <td>{c.roleCategory ? <span className="chip">{categoryLabel(c.roleCategory)}</span> : <span className="t-sub">general</span>}</td>
                   <td>{c.email ? <a href={`mailto:${c.email}`}>{c.email}</a> : '—'}</td>
-                  <td>{c.phone ?? '—'}</td>
                   <td>
                     {c.entityId ? <Link to={`/buyers/${c.entityId}`}>{c.entityName}</Link> : c.entityName ?? '—'}
                     {c.officeName && <div className="t-sub">{c.officeName}</div>}

@@ -186,6 +186,28 @@ describe('scoreOpportunity — budget fit', () => {
   });
 });
 
+describe('scoreOpportunity — decision-maker (who to call)', () => {
+  it('names the decision-maker in the contact reason', () => {
+    const out = scoreOpportunity(
+      telecomSeller,
+      input({
+        hasNamedContact: true,
+        decisionMaker: { name: 'Rachel Dougherty', title: 'Chief Procurement Officer', roleCategory: null },
+      }),
+    );
+    const cp = out.reasons.find((r) => r.factor === 'contact_presence');
+    expect(cp).toBeDefined();
+    expect(cp!.reason).toMatch(/Decision-maker/);
+    expect(cp!.reason).toMatch(/Rachel Dougherty/);
+  });
+
+  it('falls back to a generic reason when no decision-maker is identified', () => {
+    const out = scoreOpportunity(telecomSeller, input({ hasNamedContact: true, decisionMaker: null }));
+    const cp = out.reasons.find((r) => r.factor === 'contact_presence');
+    expect(cp!.reason).toMatch(/named procurement contact/i);
+  });
+});
+
 describe('scoreOpportunity — explainability', () => {
   it('every reason carries a contribution and threads opportunity evidence span ids', () => {
     const out = scoreOpportunity(telecomSeller, input());

@@ -16,7 +16,6 @@ import {
   entities,
   eq,
   evidenceSpans,
-  isNotNull,
   matches,
   opportunities,
   sellerProfiles,
@@ -62,7 +61,7 @@ export async function computeMatches(
     db.select().from(opportunities),
     db.select().from(entities),
     db.select().from(signals),
-    db.select({ entityId: contacts.entityId }).from(contacts).where(isNotNull(contacts.email)),
+    db.select().from(contacts),
     db
       .select({ targetId: evidenceSpans.targetId, targetTable: evidenceSpans.targetTable, id: evidenceSpans.id })
       .from(evidenceSpans),
@@ -71,6 +70,27 @@ export async function computeMatches(
 
   const entityById = new Map(entRows.map((e) => [e.id, e]));
   const entitiesWithContact = new Set(contactRows.map((c) => c.entityId).filter(Boolean) as string[]);
+
+  // Decision-maker map: contacts per entity → the best person to call for the seller.
+  const contactsByEntity = new Map<string, typeof contactRows>();
+  for (const c of contactRows) {
+    if (!c.entityId) continue;
+    push(contactsByEntity, c.entityId, c);
+  }
+  const bestContactFor = (entityId: string | null) => {
+    if (!entityId) return null;
+    const cs = contactsByEntity.get(entityId);
+    if (!cs || cs.length === 0) return null;
+    const reachable = cs.filter((c) => c.email);
+    const pool = reachable.length ? reachable : cs;
+    const byRank = (a: (typeof cs)[number], b: (typeof cs)[number]) => (b.titleRank ?? 0) - (a.titleRank ?? 0);
+    const specialized = pool
+      .filter((c) => c.roleCategory && vector.categories.has(c.roleCategory))
+      .sort(byRank);
+    const general = pool.filter((c) => !c.roleCategory).sort(byRank);
+    const pick = specialized[0] ?? general[0] ?? [...pool].sort(byRank)[0];
+    return pick ? { name: pick.name, title: pick.title, roleCategory: pick.roleCategory } : null;
+  };
 
   // Per-entity budget summary for budget→category fit.
   interface BudgetSummary {
@@ -158,6 +178,7 @@ export async function computeMatches(
       hasNamedContact: opp.entityId ? entitiesWithContact.has(opp.entityId) : false,
       evidenceSpanIds,
       budgetFit: budgetFitFor(opp.entityId),
+      decisionMaker: bestContactFor(opp.entityId),
     };
     const outcome = scoreOpportunity(vector, input);
     if (outcome.relevant) {
@@ -206,6 +227,7 @@ export async function computeMatches(
       hasNamedContact: entitiesWithContact.has(ent.id),
       evidenceSpanIds: evidenceByTarget.get(ent.id) ?? [],
       budgetFit: budgetFitFor(ent.id),
+      decisionMaker: bestContactFor(ent.id),
     };
     const outcome = scoreOpportunity(vector, input);
     if (outcome.relevant) {

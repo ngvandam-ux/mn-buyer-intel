@@ -44,6 +44,11 @@ export interface ContactFields {
   entityName?: string;
   entityType?: EntityType;
   officeName?: string;
+  /** Org-chart fields — left unset to be inferred from the title during ingest. */
+  roleCategory?: string | null;
+  titleRank?: number | null;
+  authorityNote?: string | null;
+  isDecisionMaker?: boolean;
 }
 
 export interface OpportunityFields {

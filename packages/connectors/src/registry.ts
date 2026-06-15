@@ -6,6 +6,7 @@
 import type { SourceConnector } from '@mn/core';
 import { metroCountiesConnector } from './sources/metro-counties.js';
 import { mmbBudgetConnector } from './sources/mmb-budget.js';
+import { orgChartsConnector } from './sources/org-charts.js';
 import { minnstateConnector } from './sources/minnstate.js';
 import { ospContactsConnector } from './sources/osp-contacts.js';
 import { ospSolicitationsConnector } from './sources/osp-solicitations.js';
@@ -20,6 +21,7 @@ import { umnConnector } from './sources/umn.js';
 
 export { metroCountiesConnector } from './sources/metro-counties.js';
 export { mmbBudgetConnector } from './sources/mmb-budget.js';
+export { orgChartsConnector } from './sources/org-charts.js';
 export { minnstateConnector } from './sources/minnstate.js';
 export { ospContactsConnector } from './sources/osp-contacts.js';
 export { ospSolicitationsConnector } from './sources/osp-solicitations.js';
@@ -41,6 +43,7 @@ export const CONNECTORS: SourceConnector[] = [
   umnConnector,
   mmbBudgetConnector,
   metroCountiesConnector,
+  orgChartsConnector,
   mndotConnector,
   metroCouncilConnector,
   nationalGuardConnector,
