@@ -24,10 +24,10 @@ export function registerBasicAuth(app: FastifyInstance): void {
     if (!req.url.startsWith('/api/') || req.url === '/api/health') return;
     const provided = digest(req.headers.authorization ?? '');
     if (!timingSafeEqual(provided, expected)) {
-      reply
-        .header('WWW-Authenticate', 'Basic realm="mn-buyer-intel", charset="UTF-8"')
-        .code(401)
-        .send({ error: 'unauthorized' });
+      // No WWW-Authenticate header on purpose: the SPA manages sign-in itself, and that
+      // header would make the browser pop its own native Basic-Auth dialog (a confusing
+      // second prompt). The SPA's AuthGate handles the 401.
+      reply.code(401).send({ error: 'unauthorized' });
     }
   });
   app.log.info('Basic Auth gate enabled');
