@@ -200,13 +200,15 @@ export function scoreOpportunity(
   }
 
   // --- priority language ---
-  const priorityHit = signals.find((s) => {
+  const priorityCandidates = signals.filter((s) => {
     if (!PRIORITY_SIGNALS.has(s.signalType)) return false;
     const pTokens = tokenizeAll([s.title, s.detail]);
     const overlap = overlapCount(seller.tokens, pTokens);
     const catText = [...seller.categories].some((c) => `${s.title} ${s.detail ?? ''}`.toLowerCase().includes(c));
     return overlap > 0 || catText;
   });
+  // Prefer a vendor-naming incumbent signal so the reason lists who you'd displace.
+  const priorityHit = priorityCandidates.find((s) => /^Incumbents —/.test(s.title)) ?? priorityCandidates[0];
   const priorityMatch = Boolean(priorityHit);
   if (priorityHit) {
     reasons.push({
