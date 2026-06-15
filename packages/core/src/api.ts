@@ -76,6 +76,20 @@ export interface SignalListItem extends Signal {
   opportunityTitle: string | null;
 }
 
+/** When a seller should reach out to this buyer (budget cycle + expiring + due dates). */
+export interface ReachOut {
+  window: 'now' | 'soon' | 'monitor';
+  label: string;
+}
+
+export interface SimilarBuyer {
+  entityId: string;
+  entityName: string;
+  entityType: EntityType;
+  score: number;
+  sharedCategories: string[];
+}
+
 export interface EntityDetail {
   entity: Entity;
   offices: Office[];
@@ -83,6 +97,8 @@ export interface EntityDetail {
   opportunities: OpportunityListItem[];
   signals: Signal[];
   budgetLines: BudgetLine[];
+  reachOut: ReachOut;
+  similar: SimilarBuyer[];
   evidence: EvidenceRef[];
 }
 

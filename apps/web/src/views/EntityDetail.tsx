@@ -27,7 +27,8 @@ export function EntityDetail() {
   if (error) return <ErrorState error={error} />;
   if (!data) return null;
 
-  const { entity, offices, contacts, opportunities, signals, budgetLines, evidence } = data;
+  const { entity, offices, contacts, opportunities, signals, budgetLines, reachOut, similar, evidence } = data;
+  const roClass = reachOut.window === 'now' ? 'tier-high' : reachOut.window === 'soon' ? 'status-upcoming' : 'soft';
 
   return (
     <div className="stack">
@@ -41,6 +42,10 @@ export function EntityDetail() {
               <span className="pill soft">{entityTypeLabel(entity.entityType)}</span>
               <span className="t-sub">{entity.jurisdiction}{entity.county ? ` · ${entity.county} County` : ''}{entity.city ? ` · ${entity.city}` : ''}</span>
               {entity.website && <a href={entity.website} target="_blank" rel="noreferrer">website ↗</a>}
+            </div>
+            <div className="inline" style={{ marginTop: 10 }}>
+              <span className={`pill ${roClass}`}>⏱ {reachOut.window === 'now' ? 'Reach out now' : reachOut.window === 'soon' ? 'Reach out soon' : 'Monitor'}</span>
+              <span className="t-sub">{reachOut.label}</span>
             </div>
           </div>
           <div className="inline">
@@ -153,6 +158,26 @@ export function EntityDetail() {
               <span key={o.id} className="chip">{o.name}</span>
             ))}
           </div>
+        </Card>
+      )}
+
+      {similar.length > 0 && (
+        <Card title="Similar buyers" right={<span className="t-sub">buy / fund the same categories</span>}>
+          <table className="table">
+            <thead>
+              <tr><th>Buyer</th><th>Type</th><th>Shared categories</th><th className="num">Similarity</th></tr>
+            </thead>
+            <tbody>
+              {similar.map((s) => (
+                <tr key={s.entityId} className="row" onClick={() => navigate(`/buyers/${s.entityId}`)}>
+                  <td><span className="t-title">{s.entityName}</span></td>
+                  <td><span className="pill soft">{entityTypeLabel(s.entityType)}</span></td>
+                  <td><Chips items={s.sharedCategories} kind="category" /></td>
+                  <td className="num">{Math.round(s.score * 100)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </Card>
       )}
 

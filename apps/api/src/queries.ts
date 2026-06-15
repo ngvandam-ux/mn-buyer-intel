@@ -8,6 +8,8 @@ import type {
   ContactListItem,
   DashboardDTO,
   EntityDetail,
+  ReachOut,
+  SimilarBuyer,
   EntityListItem,
   EvidenceRef,
   MatchResults,
@@ -17,7 +19,9 @@ import type {
   SignalListItem,
   SourceHealth,
 } from '@mn/core';
-import { CATEGORY_TAXONOMY, DEFAULT_FOCUS, categoryLabel, lensWeightForCategories } from '@mn/core';
+import type { Signal } from '@mn/core';
+import { CATEGORY_TAXONOMY, DEFAULT_FOCUS, categoryLabel, cosineSimilarity, lensWeightForCategories, sharedKeys } from '@mn/core';
+import type { BudgetLineRow } from '@mn/db';
 import { CONNECTORS } from '@mn/connectors';
 import {
   type AppDatabase,
@@ -250,8 +254,83 @@ export async function getEntityDetail(db: AppDatabase, id: string): Promise<Enti
     ...sigs.map((s) => s.id),
     ...budgets.map((b) => b.id),
   ];
-  const evidence = await resolveEvidence(db, targetIds);
-  return { entity, offices: offs, contacts: cons, opportunities: opps, signals: sigs, budgetLines: budgets, evidence };
+  const [evidence, similar] = await Promise.all([resolveEvidence(db, targetIds), getSimilarBuyers(db, id)]);
+  const reachOut = computeReachOut(opps, sigs, budgets);
+  return {
+    entity,
+    offices: offs,
+    contacts: cons,
+    opportunities: opps,
+    signals: sigs,
+    budgetLines: budgets,
+    reachOut,
+    similar,
+    evidence,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Correlations — buyer lookalikes + reach-out timing (v4)
+// ---------------------------------------------------------------------------
+
+/** Buyers that buy/fund the same categories (cosine over category-exposure vectors). */
+export async function getSimilarBuyers(db: AppDatabase, entityId: string, limit = 5): Promise<SimilarBuyer[]> {
+  const [oppRows, budgetRows, entRows] = await Promise.all([
+    db.select({ entityId: opportunities.entityId, cats: opportunities.categoryKeys }).from(opportunities),
+    db.select({ entityId: budgetLines.entityId, cats: budgetLines.categoryKeys }).from(budgetLines),
+    db.select({ id: entities.id, name: entities.name, entityType: entities.entityType }).from(entities),
+  ]);
+  const vecs = new Map<string, Map<string, number>>();
+  const add = (eid: string | null, cats: string[], w: number) => {
+    if (!eid) return;
+    const m = vecs.get(eid) ?? new Map<string, number>();
+    for (const c of cats) m.set(c, (m.get(c) ?? 0) + w);
+    vecs.set(eid, m);
+  };
+  for (const o of oppRows) add(o.entityId, o.cats, 1);
+  for (const b of budgetRows) add(b.entityId, b.cats, 2);
+
+  const target = vecs.get(entityId);
+  if (!target) return [];
+  const entById = new Map(entRows.map((e) => [e.id, e]));
+  const scored: SimilarBuyer[] = [];
+  for (const [eid, vec] of vecs) {
+    if (eid === entityId) continue;
+    const s = cosineSimilarity(target, vec);
+    if (s <= 0) continue;
+    const e = entById.get(eid);
+    if (!e) continue;
+    scored.push({
+      entityId: eid,
+      entityName: e.name,
+      entityType: e.entityType,
+      score: Math.round(s * 100) / 100,
+      sharedCategories: sharedKeys(target, vec).slice(0, 6),
+    });
+  }
+  return scored.sort((a, b) => b.score - a.score).slice(0, limit);
+}
+
+/** When to reach out: budget cycle + expiring contracts + opportunity due dates. */
+function computeReachOut(
+  opps: OpportunityListItem[],
+  sigs: Signal[],
+  budgets: BudgetLineRow[],
+): ReachOut {
+  const now = Date.now();
+  const DAY = 86_400_000;
+  const openSoon = opps.some(
+    (o) => o.status === 'open' && o.dueDate && new Date(o.dueDate).getTime() - now < 30 * DAY && new Date(o.dueDate).getTime() > now,
+  );
+  const hasOpen = opps.some((o) => o.status === 'open');
+  const expiring = sigs.some((s) => s.signalType === 'expiring_contract');
+  const fundedNow = budgets.some((b) => (b.fiscalPeriod ?? '').includes('2026-27'));
+  if (openSoon) return { window: 'now', label: 'Open solicitation closing within 30 days — respond now' };
+  if (expiring) return { window: 'now', label: 'Contract expiring — re-bid window is open' };
+  if (fundedNow) return { window: 'now', label: 'FY2026-27 appropriations are live — budget available to spend now' };
+  if (hasOpen) return { window: 'soon', label: 'Active solicitation posted — engage now' };
+  if (budgets.length > 0 || sigs.length > 0) return { window: 'monitor', label: 'Funded/strategic interest — monitor for solicitations' };
+  return { window: 'monitor', label: 'No active timing signal yet' };
 }
 
 // ---------------------------------------------------------------------------
