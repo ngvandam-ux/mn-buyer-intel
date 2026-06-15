@@ -7,7 +7,7 @@
 
 import type { Extraction, SourceConnector } from '@mn/core';
 import { describe, expect, it } from 'vitest';
-import { fixtureAsRawDocument } from '../runtime/fixtures.js';
+import { fixtureAsRawDocument, fixtureDocsForConnector } from '../runtime/fixtures.js';
 import { metroCountiesConnector } from './metro-counties.js';
 import { orgChartsConnector } from './org-charts.js';
 import { minnstateConnector } from './minnstate.js';
@@ -115,23 +115,25 @@ describe('minnstate parser', () => {
 });
 
 describe('mmb-budget parser', () => {
-  const MNIT_URL =
-    'https://mn.gov/mmb-stat/documents/budget/2026-27-biennial-budget-books/governors-revised-march/mn-it-services.pdf';
-  it('extracts an agency budget line + priorities from the budget book PDF text', async () => {
-    const raw = fixtureAsRawDocument('mn-mmb-budget', MNIT_URL);
-    if (!raw) throw new Error('missing mn-mmb-budget fixture');
-    const ex = await Promise.resolve(mmbBudgetConnector.parse(raw));
-    const budgets = byKind(ex, 'budget');
-    expect(budgets.length).toBe(1);
-    const f = budgets[0]!.fields as Record<string, unknown>;
-    expect(f.entityName).toBe('Minnesota IT Services');
+  it('extracts per-agency budget lines + capability-demand signals across agencies', () => {
+    // Connector content-identifies each agency PDF; parse all committed budget fixtures.
+    const docs = fixtureDocsForConnector('mn-mmb-budget', mmbBudgetConnector.meta.url);
+    expect(docs.length).toBeGreaterThanOrEqual(2);
+    const all = docs.flatMap((d) => mmbBudgetConnector.parse(d) as Extraction[]);
+    const budgets = byKind(all, 'budget');
+    expect(budgets.length).toBeGreaterThanOrEqual(2);
+
+    const mnit = budgets.find((b) => (b.fields as { entityName: string }).entityName === 'Minnesota IT Services');
+    expect(mnit).toBeDefined();
+    const f = mnit!.fields as Record<string, unknown>;
     expect(Number(f.amount)).toBeGreaterThan(100_000_000);
     expect(f.categoryKeys as string[]).toContain('software');
     expect(f.fiscalPeriod).toBe('FY2026-27');
-    const signalTypes = byKind(ex, 'signal').map((s) => (s.fields as { signalType: string }).signalType);
-    expect(signalTypes).toContain('budget_priority');
-    expect(signalTypes).toContain('strategic_initiative');
-    expect(byKind(ex, 'entity').length).toBe(1);
+
+    // Capability-demand signals ("X demand: <capability>") are emitted.
+    const caps = byKind(all, 'signal').filter((s) => /demand:/.test((s.fields as { title: string }).title));
+    expect(caps.length).toBeGreaterThanOrEqual(5);
+    expect(byKind(all, 'signal').some((s) => (s.fields as { signalType: string }).signalType === 'budget_priority')).toBe(true);
   });
 });
 

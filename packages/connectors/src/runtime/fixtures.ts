@@ -37,6 +37,35 @@ export function latestFixture(connectorId: string): FixtureFile | null {
   return { path, name, body: readFileSync(path, 'utf8'), capturedAt: parseFixtureTimestamp(name) };
 }
 
+const isFixture = (f: string) => f.endsWith('.html') || f.endsWith('.json') || f.endsWith('.txt');
+const contentTypeFor = (path: string) =>
+  path.endsWith('.json') ? 'application/json' : path.endsWith('.txt') ? 'text/plain' : 'text/html';
+
+/** All committed fixtures for a connector (multiple agencies/counties), oldest→newest. */
+export function allFixtures(connectorId: string): FixtureFile[] {
+  const dir = resolve(fixturesRoot(), connectorId);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter(isFixture)
+    .sort()
+    .map((name) => {
+      const path = resolve(dir, name);
+      return { path, name, body: readFileSync(path, 'utf8'), capturedAt: parseFixtureTimestamp(name) };
+    });
+}
+
+/** Every fixture for a connector as RawDocuments — for multi-document offline ingest. */
+export function fixtureDocsForConnector(connectorId: string, url: string): RawDocument[] {
+  return allFixtures(connectorId).map((f) => ({
+    connectorId,
+    url,
+    fetchedAt: f.capturedAt ?? new Date().toISOString(),
+    contentType: contentTypeFor(f.path),
+    body: f.body,
+    sha256: sha256(f.body),
+  }));
+}
+
 /** Build a RawDocument from the newest fixture, for offline parsing. */
 export function fixtureAsRawDocument(connectorId: string, url: string): RawDocument | null {
   const f = latestFixture(connectorId);

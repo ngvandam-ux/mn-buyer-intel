@@ -9,4 +9,5 @@ export * from './domain.js';
 export * from './scoring-config.js';
 export * from './focus.js';
 export * from './org-chart.js';
+export * from './capabilities.js';
 export * from './api.js';

@@ -9,7 +9,7 @@
  */
 
 import type { Extraction, RawDocument, SourceConnector } from '@mn/core';
-import { fixtureAsRawDocument } from '@mn/connectors';
+import { fixtureDocsForConnector } from '@mn/connectors';
 import type { FetchContext } from '@mn/core';
 import {
   type AppDatabase,
@@ -214,12 +214,12 @@ export async function ingestConnector(
   return runIngest(db, connector, rawDocs);
 }
 
-/** Offline ingest from the newest committed fixture (used by seeding/tests). */
+/** Offline ingest from ALL committed fixtures for the connector (multi-agency/county). */
 export async function ingestFromFixture(
   db: AppDatabase,
   connector: SourceConnector,
 ): Promise<IngestSummary | null> {
-  const doc = fixtureAsRawDocument(connector.meta.id, connector.meta.url);
-  if (!doc) return null;
-  return runIngest(db, connector, [doc]);
+  const docs = fixtureDocsForConnector(connector.meta.id, connector.meta.url);
+  if (docs.length === 0) return null;
+  return runIngest(db, connector, docs);
 }

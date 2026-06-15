@@ -8,8 +8,8 @@
  * and confidence-scored — flows through the admin review queue.
  */
 
-import type { Extraction, FetchContext, RawDocument, SourceConnector } from '@mn/core';
-import { collapseWhitespace, detectCategories, evidenceSpan } from '@mn/core';
+import type { EntityType, Extraction, FetchContext, RawDocument, SourceConnector } from '@mn/core';
+import { collapseWhitespace, detectCapabilities, detectCategories, evidenceSpan } from '@mn/core';
 import { extract } from '../extraction.js';
 
 const BIENNIUM = '2026-27';
@@ -20,28 +20,36 @@ const base = (slug: string) =>
 interface AgencyConfig {
   slug: string;
   entityName: string;
+  entityType: EntityType;
   baseCategories: string[];
 }
 
-// MNIT is confirmed; the others share the URL pattern and are fetched tolerantly (a wrong
-// slug just logs + skips). Extend freely.
+// Slugs confirmed against the MMB budget-book URL pattern; fetched tolerantly (a wrong slug
+// just logs + skips). Capability mining + categories surface what each agency is buying.
 const AGENCIES: AgencyConfig[] = [
-  { slug: 'mn-it-services', entityName: 'Minnesota IT Services', baseCategories: ['software', 'it_hardware', 'cybersecurity', 'telecom'] },
-  { slug: 'public-safety', entityName: 'Minnesota Department of Public Safety', baseCategories: ['safety', 'security_services'] },
-  { slug: 'transportation', entityName: 'Minnesota Department of Transportation', baseCategories: ['transportation_transit', 'fleet'] },
-  { slug: 'education', entityName: 'Minnesota Department of Education', baseCategories: ['training', 'software'] },
-  { slug: 'health', entityName: 'Minnesota Department of Health', baseCategories: ['medical', 'software'] },
-  { slug: 'administration', entityName: 'Minnesota Department of Administration', baseCategories: ['professional_services', 'facilities'] },
+  { slug: 'mn-it-services', entityName: 'Minnesota IT Services', entityType: 'state_agency', baseCategories: ['software', 'it_hardware', 'cybersecurity', 'telecom'] },
+  { slug: 'transportation', entityName: 'Minnesota Department of Transportation', entityType: 'state_agency', baseCategories: ['transportation_transit', 'construction', 'fleet'] },
+  { slug: 'health', entityName: 'Minnesota Department of Health', entityType: 'state_agency', baseCategories: ['medical', 'software'] },
+  { slug: 'corrections', entityName: 'Minnesota Department of Corrections', entityType: 'state_agency', baseCategories: ['safety', 'security_services', 'medical'] },
+  { slug: 'education', entityName: 'Minnesota Department of Education', entityType: 'state_agency', baseCategories: ['training', 'software'] },
+  { slug: 'administration', entityName: 'Minnesota Department of Administration', entityType: 'state_agency', baseCategories: ['professional_services', 'facilities', 'software'] },
+  { slug: 'military-affairs', entityName: 'Minnesota Department of Military Affairs', entityType: 'military_national_guard', baseCategories: ['safety', 'facilities', 'training'] },
+  { slug: 'human-services', entityName: 'Minnesota Department of Human Services', entityType: 'state_agency', baseCategories: ['medical', 'software', 'professional_services'] },
+  { slug: 'natural-resources', entityName: 'Minnesota Department of Natural Resources', entityType: 'state_agency', baseCategories: ['environmental', 'fleet', 'construction'] },
 ];
 
 const FISCAL_PERIOD = `FY${BIENNIUM}`;
 
+// The distinctive part of an agency name (drops the "Minnesota Department of" prefix).
+const distinctive = (name: string) => name.replace(/^minnesota (department of )?/i, '').toLowerCase();
+
 function configForDoc(url: string, text: string): AgencyConfig | undefined {
   const byUrl = AGENCIES.find((a) => url.includes(`/${a.slug}.pdf`));
   if (byUrl) return byUrl;
-  // Fixture/offline path: the URL may be the landing page, so identify by content.
-  const head = text.slice(0, 800).toLowerCase();
-  return AGENCIES.find((a) => head.includes(a.entityName.toLowerCase()));
+  // Fixture/offline path: the URL is the landing page, so identify by the agency named in
+  // the budget book's title area (first ~500 chars: "...Contents <Agency Name>...").
+  const head = text.slice(0, 500).toLowerCase();
+  return AGENCIES.find((a) => head.includes(distinctive(a.entityName)));
 }
 
 function sectionSnippet(text: string, marker: RegExp, len = 320): string | null {
@@ -85,7 +93,7 @@ export const mmbBudgetConnector: SourceConnector = {
     // --- agency entity ---
     out.push(
       extract.entity(
-        { name: cfg.entityName, entityType: 'state_agency', jurisdiction: 'MN' },
+        { name: cfg.entityName, entityType: cfg.entityType, jurisdiction: 'MN' },
         [evidenceSpan(`pdf:${cfg.slug}`, cfg.entityName, at)],
         { confidence: 0.9 },
       ),
@@ -119,15 +127,21 @@ export const mmbBudgetConnector: SourceConnector = {
     }
 
     const strategies = sectionSnippet(text, /STRATEGIES/);
+    // Specific capabilities the agency is funding/seeking — the "what they want" detail.
+    const capabilities = detectCapabilities(text);
     const categoryKeys = Array.from(
-      new Set([...cfg.baseCategories, ...detectCategories(`${program} ${strategies ?? ''} ${region}`)]),
+      new Set([
+        ...cfg.baseCategories,
+        ...detectCategories(`${program} ${strategies ?? ''} ${region}`),
+        ...capabilities.map((c) => c.category),
+      ]),
     );
 
     out.push(
       extract.budget(
         {
           entityName: cfg.entityName,
-          entityType: 'state_agency',
+          entityType: cfg.entityType,
           program,
           categoryKeys,
           fiscalPeriod: FISCAL_PERIOD,
@@ -142,8 +156,27 @@ export const mmbBudgetConnector: SourceConnector = {
       ),
     );
 
-    // --- strategic priorities signal ---
-    if (strategies) {
+    // --- specific capability-demand signals ("what they're looking for") ---
+    if (capabilities.length > 0) {
+      for (const cap of capabilities.slice(0, 10)) {
+        out.push(
+          extract.signal(
+            {
+              signalType: 'strategic_initiative',
+              title: `${cfg.entityName} demand: ${cap.label}`,
+              detail: cap.snippet,
+              url: raw.url,
+              entityName: cfg.entityName,
+              entityType: cfg.entityType,
+              observedAt: at,
+              strength: 0.5,
+            },
+            [evidenceSpan(`budget narrative · ${cap.key}`, cap.snippet.slice(0, 180), at)],
+            { confidence: 0.7 },
+          ),
+        );
+      }
+    } else if (strategies) {
       out.push(
         extract.signal(
           {
@@ -152,7 +185,7 @@ export const mmbBudgetConnector: SourceConnector = {
             detail: strategies,
             url: raw.url,
             entityName: cfg.entityName,
-            entityType: 'state_agency',
+            entityType: cfg.entityType,
             observedAt: at,
           },
           [evidenceSpan('STRATEGIES', strategies.slice(0, 200), at)],
@@ -172,7 +205,7 @@ export const mmbBudgetConnector: SourceConnector = {
             detail: `Funded ${categoryKeys.join(', ')} demand. Program: ${program}.`,
             url: raw.url,
             entityName: cfg.entityName,
-            entityType: 'state_agency',
+            entityType: cfg.entityType,
             observedAt: at,
             strength: 0.6,
           },
