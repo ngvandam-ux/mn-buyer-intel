@@ -367,6 +367,43 @@ export const CATEGORY_TAXONOMY: CategoryDef[] = [
   },
 ];
 
+/**
+ * Representative NAICS codes per category — what a seller registers/targets under. These are
+ * the primary codes for each spend area (not exhaustive); they make NAICS native to the data
+ * so opportunities, budgets, and the brief can cite real codes consistently.
+ */
+export const CATEGORY_NAICS: Record<string, string[]> = {
+  telecom: ['517111', '517112', '517810', '423610'],
+  fleet: ['441110', '336120', '811111', '423110'],
+  training: ['611430', '611710'],
+  safety: ['334290', '339113', '922120', '561612'],
+  software: ['511210', '541511', '541512', '518210'],
+  it_hardware: ['334111', '423430', '541330'],
+  cybersecurity: ['541512', '541519', '561621'],
+  facilities: ['561210', '238220', '561720'],
+  construction: ['236220', '237310', '238900'],
+  professional_services: ['541611', '541618', '541990'],
+  medical: ['339112', '423450', '621999'],
+  office_supplies: ['453210', '337214'],
+  janitorial_supplies: ['561720', '424690'],
+  food_services: ['722310', '311999'],
+  utilities_energy: ['221118', '237130', '335999'],
+  transportation_transit: ['485111', '237310', '336500'],
+  environmental: ['562910', '541620', '562111'],
+  security_services: ['561612', '561621', '561613'],
+  cybersecurity_services: ['541512', '541519'],
+};
+
+/** NAICS codes for a category key (empty if none mapped). */
+export function categoryNaics(key: string): string[] {
+  return CATEGORY_NAICS[key] ?? [];
+}
+
+/** Unique NAICS codes covering a set of category keys. */
+export function naicsForCategories(keys: string[]): string[] {
+  return [...new Set(keys.flatMap((k) => categoryNaics(k)))];
+}
+
 export const CATEGORY_KEYS = CATEGORY_TAXONOMY.map((c) => c.key);
 
 const CATEGORY_BY_KEY = new Map(CATEGORY_TAXONOMY.map((c) => [c.key, c]));

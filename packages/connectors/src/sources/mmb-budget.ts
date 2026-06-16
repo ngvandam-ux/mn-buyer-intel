@@ -36,6 +36,13 @@ const AGENCIES: AgencyConfig[] = [
   { slug: 'military-affairs', entityName: 'Minnesota Department of Military Affairs', entityType: 'military_national_guard', baseCategories: ['safety', 'facilities', 'training'] },
   { slug: 'human-services', entityName: 'Minnesota Department of Human Services', entityType: 'state_agency', baseCategories: ['medical', 'software', 'professional_services'] },
   { slug: 'natural-resources', entityName: 'Minnesota Department of Natural Resources', entityType: 'state_agency', baseCategories: ['environmental', 'fleet', 'construction'] },
+  { slug: 'commerce', entityName: 'Minnesota Department of Commerce', entityType: 'state_agency', baseCategories: ['software', 'professional_services'] },
+  { slug: 'revenue', entityName: 'Minnesota Department of Revenue', entityType: 'state_agency', baseCategories: ['software', 'it_hardware', 'professional_services'] },
+  { slug: 'agriculture', entityName: 'Minnesota Department of Agriculture', entityType: 'state_agency', baseCategories: ['environmental', 'professional_services', 'fleet'] },
+  { slug: 'employment-and-economic-development', entityName: 'Minnesota Department of Employment and Economic Development', entityType: 'state_agency', baseCategories: ['training', 'software', 'professional_services'] },
+  { slug: 'veterans-affairs', entityName: 'Minnesota Department of Veterans Affairs', entityType: 'state_agency', baseCategories: ['medical', 'facilities', 'training'] },
+  { slug: 'pollution-control-agency', entityName: 'Minnesota Pollution Control Agency', entityType: 'state_agency', baseCategories: ['environmental', 'software'] },
+  { slug: 'labor-and-industry', entityName: 'Minnesota Department of Labor and Industry', entityType: 'state_agency', baseCategories: ['software', 'professional_services', 'training'] },
 ];
 
 const FISCAL_PERIOD = `FY${BIENNIUM}`;
@@ -49,7 +56,9 @@ function configForDoc(url: string, text: string): AgencyConfig | undefined {
   // Fixture/offline path: the URL is the landing page, so identify by the agency named in
   // the budget book's title area (first ~500 chars: "...Contents <Agency Name>...").
   const head = text.slice(0, 500).toLowerCase();
-  return AGENCIES.find((a) => head.includes(distinctive(a.entityName)));
+  return AGENCIES.find(
+    (a) => head.includes(distinctive(a.entityName)) || head.includes(a.slug.replace(/-/g, ' ')),
+  );
 }
 
 function sectionSnippet(text: string, marker: RegExp, len = 320): string | null {

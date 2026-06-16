@@ -82,7 +82,7 @@ export const api = {
 
   contacts: (f: { q?: string; entityId?: string } = {}) => get<ContactListItem[]>(`/api/contacts${qs(f)}`),
   signals: (f: { type?: string; q?: string; entityId?: string } = {}) => get<SignalListItem[]>(`/api/signals${qs(f)}`),
-  categories: () => get<Array<Category & { count: number }>>('/api/categories'),
+  categories: () => get<Array<{ key: string; label: string; count: number; naics: string[] }>>('/api/categories'),
   budget: () => get<BudgetIntelDTO>('/api/budget'),
 
   sources: () => get<SourceHealth[]>('/api/sources'),

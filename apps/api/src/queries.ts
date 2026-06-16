@@ -20,7 +20,7 @@ import type {
   SourceHealth,
 } from '@mn/core';
 import type { Signal } from '@mn/core';
-import { CATEGORY_TAXONOMY, DEFAULT_FOCUS, categoryLabel, cosineSimilarity, lensWeightForCategories, sharedKeys } from '@mn/core';
+import { CATEGORY_TAXONOMY, DEFAULT_FOCUS, categoryLabel, categoryNaics, cosineSimilarity, lensWeightForCategories, sharedKeys } from '@mn/core';
 import type { BudgetLineRow } from '@mn/db';
 import { CONNECTORS } from '@mn/connectors';
 import {
@@ -388,13 +388,18 @@ export async function listSignals(
 
 export async function listCategories(
   db: AppDatabase,
-): Promise<Array<{ key: string; label: string; count: number }>> {
+): Promise<Array<{ key: string; label: string; count: number; naics: string[] }>> {
   const counts = await db
     .select({ key: sql<string>`unnest(${opportunities.categoryKeys})`, n: count() })
     .from(opportunities)
     .groupBy(sql`unnest(${opportunities.categoryKeys})`);
   const map = new Map(counts.map((r) => [r.key, num(r.n)]));
-  return CATEGORY_TAXONOMY.map((c) => ({ key: c.key, label: c.label, count: map.get(c.key) ?? 0 }));
+  return CATEGORY_TAXONOMY.map((c) => ({
+    key: c.key,
+    label: c.label,
+    count: map.get(c.key) ?? 0,
+    naics: categoryNaics(c.key),
+  }));
 }
 
 export async function getSourceHealth(db: AppDatabase): Promise<SourceHealth[]> {

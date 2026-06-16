@@ -1,3 +1,4 @@
+import { naicsForCategories } from '@mn/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api.ts';
@@ -56,6 +57,13 @@ export function OpportunityDetail() {
             <span className="section-title" style={{ margin: 0 }}>Categories</span>
             <Chips items={categories.map((c) => c.key)} kind="category" />
           </div>
+
+          {naicsForCategories(o.categoryKeys).length > 0 && (
+            <div style={{ marginTop: 10 }} className="inline">
+              <span className="section-title" style={{ margin: 0 }}>Register under (NAICS)</span>
+              <Chips items={naicsForCategories(o.categoryKeys)} />
+            </div>
+          )}
 
           {entity && (
             <div style={{ marginTop: 12 }} className="inline">
