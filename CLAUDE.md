@@ -63,8 +63,8 @@ One module per source under `packages/connectors/src/sources/`, each exporting a
 | `mn-osp-contacts` | OSP contacts | browser | scaffold (bot-walled) |
 | `mn-minnstate` | Minnesota State vendors/procurement | static | scaffold |
 | `mn-umn` | University of Minnesota suppliers | static | scaffold |
-| `mn-mndot` | MnDOT procurement | static | scaffold (second-wave) |
-| `mn-metro-council` | Metropolitan Council opportunities | static | scaffold (second-wave) |
+| `mn-mndot` | MnDOT Professional/Technical consultant solicitations | browser | live |
+| `mn-metro-council` | Metropolitan Council solicitations (RFP/IFB) | static | live |
 | `mn-natl-guard` | MN National Guard / Military Affairs priorities | static | scaffold (second-wave) |
 
 A connector is "live" when it has a real `parse()` validated against a committed fixture.

@@ -11,11 +11,9 @@ import { orgChartsConnector } from './sources/org-charts.js';
 import { minnstateConnector } from './sources/minnstate.js';
 import { ospContactsConnector } from './sources/osp-contacts.js';
 import { ospSolicitationsConnector } from './sources/osp-solicitations.js';
-import {
-  metroCouncilConnector,
-  mndotConnector,
-  nationalGuardConnector,
-} from './sources/scaffolds.js';
+import { metroCouncilConnector } from './sources/metro-council.js';
+import { mndotConnector } from './sources/mndot.js';
+import { nationalGuardConnector } from './sources/scaffolds.js';
 import { sourcewellConnector } from './sources/sourcewell.js';
 import { supplierPortalConnector } from './sources/supplier-portal.js';
 import { umnConnector } from './sources/umn.js';
@@ -27,11 +25,9 @@ export { orgChartsConnector } from './sources/org-charts.js';
 export { minnstateConnector } from './sources/minnstate.js';
 export { ospContactsConnector } from './sources/osp-contacts.js';
 export { ospSolicitationsConnector } from './sources/osp-solicitations.js';
-export {
-  metroCouncilConnector,
-  mndotConnector,
-  nationalGuardConnector,
-} from './sources/scaffolds.js';
+export { metroCouncilConnector } from './sources/metro-council.js';
+export { mndotConnector } from './sources/mndot.js';
+export { nationalGuardConnector } from './sources/scaffolds.js';
 export { sourcewellConnector } from './sources/sourcewell.js';
 export { supplierPortalConnector } from './sources/supplier-portal.js';
 export { umnConnector } from './sources/umn.js';

@@ -42,22 +42,6 @@ function makeScaffold(spec: ScaffoldSpec): SourceConnector {
   };
 }
 
-export const mndotConnector = makeScaffold({
-  id: 'mn-mndot',
-  sourceName: 'MnDOT Procurement',
-  url: 'https://www.dot.state.mn.us/',
-  entityHint: 'state_agency',
-  description: 'Minnesota Department of Transportation procurement & bid lettings (second-wave).',
-});
-
-export const metroCouncilConnector = makeScaffold({
-  id: 'mn-metro-council',
-  sourceName: 'Metropolitan Council Opportunities',
-  url: 'https://metrocouncil.org/',
-  entityHint: 'special_district_transit_council',
-  description: 'Twin Cities Metropolitan Council solicitations & transit opportunities (second-wave).',
-});
-
 export const nationalGuardConnector = makeScaffold({
   id: 'mn-natl-guard',
   sourceName: 'MN National Guard / Military Affairs',

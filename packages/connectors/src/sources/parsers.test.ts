@@ -9,7 +9,9 @@ import type { Extraction, SourceConnector } from '@mn/core';
 import { describe, expect, it } from 'vitest';
 import { fixtureAsRawDocument, fixtureDocsForConnector } from '../runtime/fixtures.js';
 import { incumbentsConnector } from './incumbents.js';
+import { metroCouncilConnector } from './metro-council.js';
 import { metroCountiesConnector } from './metro-counties.js';
+import { mndotConnector } from './mndot.js';
 import { orgChartsConnector } from './org-charts.js';
 import { minnstateConnector } from './minnstate.js';
 import { mmbBudgetConnector } from './mmb-budget.js';
@@ -152,6 +154,50 @@ describe('metro-counties parser', () => {
     expect(names).toContain('Hennepin County');
     expect(names).toContain('Ramsey County');
     expect(byKind(ex, 'signal').some((s) => (s.fields as { signalType: string }).signalType === 'cooperative_pathway')).toBe(true);
+  });
+});
+
+describe('metro-council parser', () => {
+  it('extracts Met Council solicitations (RFP/IFB) with dates, type, and the entity', async () => {
+    const ex = await parseFixture(metroCouncilConnector);
+    const opps = byKind(ex, 'opportunity');
+    expect(opps.length).toBeGreaterThanOrEqual(5);
+    for (const o of opps) {
+      const f = o.fields as Record<string, unknown>;
+      expect(String(f.title).length).toBeGreaterThan(0);
+      expect(String(f.externalId).length).toBeGreaterThan(0);
+      expect(String(f.url)).toMatch(/^https:\/\//);
+      expect(f.status).toBe('open');
+      expect(['RFP', 'IFB']).toContain(f.solicitationType);
+      expect(isIsoOrNull(f.dueDate)).toBe(true);
+      expect(isIsoOrNull(f.postedDate)).toBe(true);
+      expect(o.evidence[0]!.rawSnippet.length).toBeGreaterThan(0);
+    }
+    expect(
+      byKind(ex, 'entity').some((e) => (e.fields as { name: string }).name === 'Metropolitan Council'),
+    ).toBe(true);
+  });
+});
+
+describe('mndot parser', () => {
+  it('extracts MnDOT P/T consultant solicitations with posted/due dates + the entity', async () => {
+    const ex = await parseFixture(mndotConnector);
+    const opps = byKind(ex, 'opportunity');
+    expect(opps.length).toBeGreaterThanOrEqual(3);
+    for (const o of opps) {
+      const f = o.fields as Record<string, unknown>;
+      expect(String(f.title).length).toBeGreaterThan(3);
+      expect(f.status).toBe('open');
+      expect(String(f.url)).toMatch(/^https:\/\//);
+      expect(isIsoOrNull(f.dueDate)).toBe(true);
+      expect(isIsoOrNull(f.postedDate)).toBe(true);
+      expect(o.evidence[0]!.rawSnippet).toMatch(/posted/);
+    }
+    expect(
+      byKind(ex, 'entity').some(
+        (e) => (e.fields as { name: string }).name === 'Minnesota Department of Transportation',
+      ),
+    ).toBe(true);
   });
 });
 
