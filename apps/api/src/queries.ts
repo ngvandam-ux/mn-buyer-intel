@@ -61,6 +61,7 @@ export async function resolveEvidence(db: AppDatabase, targetIds: string[]): Pro
   const rows = await db
     .select({
       id: evidenceSpans.id,
+      targetId: evidenceSpans.targetId,
       field: evidenceSpans.field,
       locator: evidenceSpans.locator,
       rawSnippet: evidenceSpans.rawSnippet,
@@ -75,6 +76,7 @@ export async function resolveEvidence(db: AppDatabase, targetIds: string[]): Pro
     .where(inArray(evidenceSpans.targetId, ids));
   return rows.map((r) => ({
     id: r.id,
+    targetId: r.targetId,
     field: r.field,
     locator: r.locator,
     rawSnippet: r.rawSnippet,

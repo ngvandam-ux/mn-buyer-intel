@@ -28,6 +28,13 @@ export function EntityDetail() {
   if (!data) return null;
 
   const { entity, offices, contacts, opportunities, signals, budgetLines, reachOut, similar, evidence } = data;
+
+  // Group captured evidence by the row it justifies, so each signal can show its source snippet.
+  const evidenceByTarget = new Map<string, typeof evidence>();
+  for (const e of evidence) {
+    if (!e.targetId) continue;
+    (evidenceByTarget.get(e.targetId) ?? evidenceByTarget.set(e.targetId, []).get(e.targetId)!).push(e);
+  }
   const roClass = reachOut.window === 'now' ? 'tier-high' : reachOut.window === 'soon' ? 'status-upcoming' : 'soft';
 
   return (
@@ -84,15 +91,24 @@ export function EntityDetail() {
             {signals.length === 0 ? (
               <EmptyState>No signals.</EmptyState>
             ) : (
-              signals.map((s) => (
-                <div key={s.id} className="row-between" style={{ alignItems: 'flex-start' }}>
-                  <div>
-                    <div className="t-title">{s.title}</div>
-                    {s.detail && <div className="t-sub">{s.detail}</div>}
+              signals.map((s) => {
+                const evid = evidenceByTarget.get(s.id) ?? [];
+                return (
+                  <div key={s.id} className="signal-card">
+                    <div className="row-between" style={{ alignItems: 'flex-start' }}>
+                      <div className="t-title">{s.title}</div>
+                      <span className="pill brand">{signalTypeLabel(s.signalType)}</span>
+                    </div>
+                    {s.detail && <p className="signal-narrative">{s.detail}</p>}
+                    <div className="signal-meta">
+                      <span>strength {Math.round(s.strength * 100)}%</span>
+                      {s.observedAt && <><span>·</span><span>observed {fmtDate(s.observedAt)}</span></>}
+                      {s.url && <><span>·</span><a href={s.url} target="_blank" rel="noreferrer">source ↗</a></>}
+                    </div>
+                    {evid.length > 0 && <EvidenceChain evidence={evid} />}
                   </div>
-                  <span className="pill brand">{signalTypeLabel(s.signalType)}</span>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </Card>

@@ -22,6 +22,8 @@ import type { EntityType, MatchTier, OpportunityStatus, SignalType } from './tax
 /** One resolved evidence pointer: a snippet + its source document. */
 export interface EvidenceRef {
   id: string;
+  /** The id of the normalized row this snippet justifies (signal, opportunity, …). */
+  targetId: string | null;
   field: string;
   locator: string;
   rawSnippet: string;
